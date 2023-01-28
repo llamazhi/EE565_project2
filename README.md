@@ -1,1 +1,1 @@
-# EE565_Proj1
+# EE565_Project 2 UDP file transfer
