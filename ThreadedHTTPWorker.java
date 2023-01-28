@@ -75,6 +75,11 @@ public class ThreadedHTTPWorker extends Thread {
     }
 
     private void parseRequest(String req, DataOutputStream out) {
+        final String prefix = "peer/";
+        final String add = "add?";
+        final String view = "view/";
+        final String config = "config?";
+
         System.out.println("Begin to parse request ... ");
         try {
             String[] acceptableFiles = {"txt", "css", "html", "gif", "jpg", "png", "js",
@@ -83,10 +88,31 @@ public class ThreadedHTTPWorker extends Thread {
             pageURLIndex = req.indexOf("HTTP");
             String header = req.substring(0, pageURLIndex - 1); // remove HTTP/1.1 or HTTP/1.0
             String relativeURL = header.substring(5); // remove GET / at this version
-//            System.out.println("relativeURL: " + relativeURL);
+
 //            System.out.println(relativeURL.length());
             String extension = relativeURL.substring(5);
-//            System.out.println("extension: " + extension);
+            System.out.println("relativeURL: " + relativeURL);
+
+            if (relativeURL.contains(prefix)) {
+                relativeURL = relativeURL.substring(prefix.length()); // remove peer/
+            }
+
+            // handle url with "add?"
+            if (relativeURL.contains(add)) {
+                String[] urlComponents = relativeURL.split("&");
+//                System.out.println(Arrays.toString(urlComponents));
+                String[] urlContents = new String[urlComponents.length];
+                for (int i = 0; i < urlComponents.length; i++) {
+                    int idx = urlComponents[i].indexOf("=");
+                    String content = urlComponents[i].substring(idx + 1);
+                    urlContents[i] = content;
+                }
+                System.out.println(Arrays.toString(urlContents));
+
+                // TODO: Handle different arguments
+            }
+
+
 
             if (Arrays.asList(acceptableFiles).contains(extension)) {
                 String path = "src/Content/" + relativeURL;
