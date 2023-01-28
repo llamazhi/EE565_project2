@@ -9,6 +9,8 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 // ThreadedHTTPWorker class is responsible for all the
 // actual string & data transfer
@@ -40,10 +42,8 @@ public class ThreadedHTTPWorker extends Thread {
                     break;
                 }
             }
-            System.out.println("Converted request to String ...");
 //            System.out.println(req);
-
-            parseRequest(req, this.outputStream);
+            parseURI(req);
         }
         catch (IOException e) {
             System.out.println("Something wrong with connection");
@@ -74,16 +74,31 @@ public class ThreadedHTTPWorker extends Thread {
         }
     }
 
-    private void parseRequest(String req, DataOutputStream out) {
-        final String prefix = "peer/";
-        final String add = "add?";
-        final String view = "view/";
-        final String config = "config?";
+    private void parseURI(String req) {
+        int pageURLIndex = 0;
+        pageURLIndex = req.indexOf("HTTP");
+        String header = req.substring(0, pageURLIndex - 1); // remove HTTP/1.1 or HTTP/1.0
+        String relativeURL = header.substring(5); // remove GET / at this version
 
+        System.out.println("relativeURL: " + relativeURL);
+        HTTPURIParser parser = new HTTPURIParser(relativeURL);
+        String[] queries = parser.getQueries();
+
+        // The following is showcase of HTTPURIParse, feel free to comment them out
+        System.out.println(parser.ifAdd());
+        System.out.println(parser.ifConfig());
+        System.out.println(parser.ifView());
+        System.out.println(parser.ifStatus());
+        System.out.println(parser.ifConfig());
+        System.out.println(Arrays.toString(queries));
+    }
+
+    private void parseRequest(String req, DataOutputStream out) {
         System.out.println("Begin to parse request ... ");
         try {
             String[] acceptableFiles = {"txt", "css", "html", "gif", "jpg", "png", "js",
                     "mp4", "webm", "ogg"};
+
             int pageURLIndex = 0;
             pageURLIndex = req.indexOf("HTTP");
             String header = req.substring(0, pageURLIndex - 1); // remove HTTP/1.1 or HTTP/1.0
@@ -92,27 +107,6 @@ public class ThreadedHTTPWorker extends Thread {
 //            System.out.println(relativeURL.length());
             String extension = relativeURL.substring(5);
             System.out.println("relativeURL: " + relativeURL);
-
-            if (relativeURL.contains(prefix)) {
-                relativeURL = relativeURL.substring(prefix.length()); // remove peer/
-            }
-
-            // handle url with "add?"
-            if (relativeURL.contains(add)) {
-                String[] urlComponents = relativeURL.split("&");
-//                System.out.println(Arrays.toString(urlComponents));
-                String[] urlContents = new String[urlComponents.length];
-                for (int i = 0; i < urlComponents.length; i++) {
-                    int idx = urlComponents[i].indexOf("=");
-                    String content = urlComponents[i].substring(idx + 1);
-                    urlContents[i] = content;
-                }
-                System.out.println(Arrays.toString(urlContents));
-
-                // TODO: Handle different arguments
-            }
-
-
 
             if (Arrays.asList(acceptableFiles).contains(extension)) {
                 String path = "src/Content/" + relativeURL;

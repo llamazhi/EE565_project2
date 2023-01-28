@@ -25,7 +25,7 @@ public class VodServer {
 
                 ThreadedHTTPWorker workerThread = new ThreadedHTTPWorker(client);
                 workerThread.start();
-                System.out.println("New worker thread built");
+//                System.out.println("New worker thread built");
             }
         }
         catch (IOException e) {
