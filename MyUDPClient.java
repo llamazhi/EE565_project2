@@ -6,12 +6,14 @@ public class MyUDPClient {
 
     private final static int PORT = 7707;
     private static final String HOSTNAME = "localhost";
+    private static final byte[] ipAddr = new byte[] { 20, 106, 101, (byte) 156 };
 
     public static void main(String[] args) {
 
         try (DatagramSocket socket = new DatagramSocket(0)) {
             socket.setSoTimeout(1000);
-            InetAddress host = InetAddress.getByName(HOSTNAME);
+            // InetAddress host = InetAddress.getByName(HOSTNAME);
+            InetAddress host = InetAddress.getByAddress(ipAddr);
             byte[] requestData = "get test.txt".getBytes();
             DatagramPacket request = new DatagramPacket(requestData, requestData.length, host, PORT);
             DatagramPacket response = new DatagramPacket(new byte[1024], 1024);
