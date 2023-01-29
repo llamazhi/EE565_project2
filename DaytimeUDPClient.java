@@ -14,9 +14,18 @@ public class DaytimeUDPClient {
             DatagramPacket request = new DatagramPacket(new byte[1], 1, host, PORT);
             DatagramPacket response = new DatagramPacket(new byte[1024], 1024);
             socket.send(request);
-            socket.receive(response);
-            String result = new String(response.getData(), 0, response.getLength(), "US-ASCII");
-            System.out.println(result);
+            try {
+                // process the packet...
+                socket.receive(response);
+                String result = new String(response.getData(), 0, response.getLength(), "US-ASCII");
+                System.out.println(result);
+
+            } catch (SocketTimeoutException ex) {
+                socket.close();
+                System.err.println("No connection within 10 seconds");
+
+            }
+
         } catch (IOException ex) {
             ex.printStackTrace();
         }
