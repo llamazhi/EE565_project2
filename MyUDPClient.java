@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public class MyUDPClient {
 
@@ -36,6 +37,7 @@ public class MyUDPClient {
                 int windowSize = Integer.parseInt(responseValues[1]);
                 System.out.println("numPackets: " + numPackets + " windowSize: " + windowSize);
                 ackSeqnum = new boolean[numPackets + 1];
+                Arrays.fill(ackSeqnum, Boolean.FALSE);
                 for (int i = 0; i < numPackets; i++) {
                     requestData = new byte[bufferSize];
                     requestData = ByteBuffer.allocate(4).putInt(i).array();
@@ -51,7 +53,7 @@ public class MyUDPClient {
                     result = new String(inPkt.getData(), 4, inPkt.getLength() - 4, "US-ASCII");
                     numPackets--;
                     System.out.println(
-                            "No. " + seqnum + "   " + numPackets + " packets left");
+                            "No. " + seqnum + " received   " + numPackets + " packets left");
                     System.out.println(result);
                 }
 
