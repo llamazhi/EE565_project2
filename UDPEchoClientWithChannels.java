@@ -39,7 +39,7 @@ public class UDPEchoClientWithChannels {
                 if (numbersRead == LIMIT)
                     break;
                 // wait one minute for a connection
-                selector.select(60000);
+                selector.select(6000);
 
                 Set<SelectionKey> readyKeys = selector.selectedKeys();
 
