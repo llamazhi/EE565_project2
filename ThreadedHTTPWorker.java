@@ -99,20 +99,20 @@ public class ThreadedHTTPWorker extends Thread {
             // This is a local request
             String path = parser.getPath();
             viewContent(req, path);
-        } else if (parser.ifAdd()) {
+        } else if (parser.hasAdd()) {
             String[] queries = parser.getQueries();
             addPeer(queries);
 
             // TODO: tell the backend node the specified information
             this.queries = queries;
             System.out.println(Arrays.toString(queries));
-        } else if (parser.ifView()) {
+        } else if (parser.hasView()) {
             String path = parser.getPath();
             path = path.replace("peer/view/", "");
             viewContent(req, path);
-        } else if (parser.ifConfig()) {
+        } else if (parser.hasConfig()) {
             configureRate();
-        } else if (parser.ifStatus()) {
+        } else if (parser.hasStatus()) {
             showStatus();
         } else {
             sendErrorResponse();

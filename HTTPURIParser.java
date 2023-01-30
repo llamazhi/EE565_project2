@@ -24,7 +24,7 @@ public class HTTPURIParser {
     }
 
     public boolean hasUDPRequest() {
-        return (this.ifAdd() || this.ifView() || this.ifConfig() || this.ifStatus());
+        return (this.hasAdd() || this.hasView() || this.hasConfig() || this.hasStatus());
     }
 
     public String getPath() {
@@ -32,22 +32,22 @@ public class HTTPURIParser {
     }
 
     // Return if the uri contains "add" keyword
-    public boolean ifAdd() {
+    public boolean hasAdd() {
         return this.path.contains("add");
     }
 
     // Return if the uri contains "view" keyword
-    public boolean ifView() {
+    public boolean hasView() {
         return this.path.contains("view");
     }
 
     // Return if the uri contains "config" keyword
-    public boolean ifConfig() {
+    public boolean hasConfig() {
         return this.path.contains("config");
     }
 
     // Return if the uri contains "status" keyword
-    public boolean ifStatus() {
+    public boolean hasStatus() {
         return this.path.contains("status");
     }
 
