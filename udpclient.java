@@ -60,8 +60,8 @@ public class udpclient {
 					int retries = 3;
 					while (retries > 0) {
 						try {
-							socket.receive(inPkt);
 							socket.setSoTimeout(1000); // wait for response for 3 seconds
+							socket.receive(inPkt);
 							seqnumBytes = new byte[4];
 							System.arraycopy(inPkt.getData(), 0, seqnumBytes, 0, 4);
 							int seqnum = ByteBuffer.wrap(seqnumBytes).getInt();
