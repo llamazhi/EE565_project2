@@ -143,9 +143,9 @@ public class ThreadedHTTPWorker extends Thread {
         // Add functionality to actually receive content from the server
         try {
             System.out.println("viewPath: " + path);
-            String fileType = categorizeFile(path);
             File f = new File(path);
             if (f.exists()) {
+                String fileType = categorizeFile(path);
                 long fileSize = f.length();
                 if (isRangeRequest(req)) {
                     int[] rangeNum = getRange(req);
