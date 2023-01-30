@@ -4,6 +4,7 @@ import java.net.URISyntaxException;
 public class HTTPURIParser {
     URI uriObj;
     String path;
+
     public HTTPURIParser(String URI) {
         try {
             this.uriObj = new URI(URI);
@@ -13,13 +14,17 @@ public class HTTPURIParser {
         }
     }
 
-//    public int getTCPPort() {
-//        return this.uriObj.getPort();
-//    }
+    // public int getTCPPort() {
+    // return this.uriObj.getPort();
+    // }
 
     // Returns all the queries contained in the uri, splitting them by "&"
     public String[] getQueries() {
         return this.uriObj.getQuery().split("&");
+    }
+
+    public boolean hasUDPRequest() {
+        return (this.ifAdd() || this.ifView() || this.ifConfig() || this.ifStatus());
     }
 
     public String getPath() {
