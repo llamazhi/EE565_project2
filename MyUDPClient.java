@@ -40,7 +40,8 @@ public class MyUDPClient {
                 Arrays.fill(ackSeqnum, Boolean.FALSE);
                 for (int i = 0; i < numPackets; i++) {
                     requestData = new byte[bufferSize];
-                    requestData = ByteBuffer.allocate(4).putInt(i).array();
+                    seqnumBytes = ByteBuffer.allocate(4).putInt(i).array();
+                    System.arraycopy(seqnumBytes, 0, requestData, 0, 4);
                     outPkt = new DatagramPacket(requestData, requestData.length, host, PORT);
                     socket.send(outPkt);
                 }
