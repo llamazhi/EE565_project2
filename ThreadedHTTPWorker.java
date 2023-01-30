@@ -95,7 +95,11 @@ public class ThreadedHTTPWorker extends Thread {
         // File f = new File("./index.html");
         // sendFullContent(categorizeFile(path), f, f.length());
 
-        if (parser.ifAdd()) {
+        if (!parser.hasUDPRequest()) {
+            // This is a local request
+            String path = parser.getPath();
+            viewContent(req, path);
+        } else if (parser.ifAdd()) {
             String[] queries = parser.getQueries();
             addPeer(queries);
 
