@@ -37,8 +37,8 @@ public class MyUDPServer {
                         byte[] chunk = new byte[bufferSize];
                         // int bytesRead;
                         while (fis.read(chunk, 4, bufferSize - 4) > 0) {
-                            byte[] chunkNumberArray = ByteBuffer.allocate(4).putInt(chunkNumber).array();
-                            System.arraycopy(chunkNumberArray, 0, chunk, 0, 4);
+                            byte[] chunkNumberBytes = ByteBuffer.allocate(4).putInt(chunkNumber).array();
+                            System.arraycopy(chunkNumberBytes, 0, chunk, 0, 4);
                             chunks.put(chunkNumber, chunk);
                             chunkNumber++;
                             chunk = new byte[bufferSize];
