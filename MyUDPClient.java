@@ -13,6 +13,13 @@ public class MyUDPClient {
     private static Map<Integer, byte[]> receivedChunks = new HashMap<>();
 
     public static void main(String[] args) throws IOException {
+        String requestFilename;
+        try {
+            requestFilename = args[0];
+        } catch (RuntimeException ex) {
+            System.err.println("Usage: java MyUDPClient filename");
+            return;
+        }
         try (DatagramSocket socket = new DatagramSocket(0)) {
             // InetAddress host = InetAddress.getByName(HOSTNAME);
             InetAddress host = InetAddress.getByAddress(ipAddr);
@@ -20,7 +27,7 @@ public class MyUDPClient {
             byte[] requestData = new byte[bufferSize];
             seqnumBytes = ByteBuffer.allocate(4).putInt(0).array();
             System.arraycopy(seqnumBytes, 0, requestData, 0, 4);
-            byte[] messageBytes = "get test.txt".getBytes();
+            byte[] messageBytes = requestFilename.getBytes();
             System.arraycopy(messageBytes, 0, requestData, 4, messageBytes.length);
             DatagramPacket outPkt = new DatagramPacket(requestData, requestData.length, host, PORT);
             DatagramPacket inPkt = new DatagramPacket(new byte[bufferSize], bufferSize);
@@ -100,7 +107,7 @@ public class MyUDPClient {
         }
 
         // write the received numbers to a file in order
-        FileOutputStream fos = new FileOutputStream("received.txt");
+        FileOutputStream fos = new FileOutputStream("received_" + args[0]);
         for (int i = 1; i <= numPackets; i++) {
             // String result = new String(receivedChunks.get(i), 4, bufferSize - 4,
             // "US-ASCII");
@@ -111,7 +118,7 @@ public class MyUDPClient {
         fos.close();
 
         System.out.println("FROM SERVER: " + receivedChunks.size() + " packets");
-        System.out.println("Received bytes written to file: received.txt");
+        System.out.println("Received bytes written to file: received_" + args[0]);
 
     }
 

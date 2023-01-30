@@ -23,10 +23,10 @@ public class MyUDPServer {
                     byte[] seqnumBytes = new byte[4];
                     System.arraycopy(inPkt.getData(), 0, seqnumBytes, 0, 4);
                     int seqnum = ByteBuffer.wrap(seqnumBytes).getInt();
-                    String requestString = new String(inPkt.getData(), 4, inPkt.getLength() - 4);
-                    audit.info(requestString);
-                    if (requestString.contains("get test.txt")) {
-                        FileInputStream fis = new FileInputStream("Content/test.txt");
+                    String requestString = new String(inPkt.getData(), 4, inPkt.getLength() - 4).trim();
+                    if (!requestString.isEmpty()) {
+                        audit.info(requestString);
+                        FileInputStream fis = new FileInputStream("Content/" + requestString);
                         int windowSize = 10;
                         numPackets = (int) Math.ceil((double) fis.getChannel().size() / (bufferSize - 4));
                         byte[] data = (numPackets + " " + windowSize).getBytes();
