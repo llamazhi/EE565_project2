@@ -6,11 +6,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
-import java.net.URI;
-import java.net.URISyntaxException;
 
 // ThreadedHTTPWorker class is responsible for all the
 // actual string & data transfer
@@ -19,6 +18,8 @@ public class ThreadedHTTPWorker extends Thread {
     private DataInputStream inputStream = null;
     private DataOutputStream outputStream = null;
     private final String CRLF = "\r\n";
+    private String[] queries;
+
     public ThreadedHTTPWorker(Socket client) {
         this.client = client;
     }
@@ -43,7 +44,8 @@ public class ThreadedHTTPWorker extends Thread {
                 }
             }
 //            System.out.println(req);
-            parseURI(req);
+            String relativeURL = preprocessReq(req);
+            parseURI(relativeURL);
         }
         catch (IOException e) {
             System.out.println("Something wrong with connection");
@@ -74,82 +76,142 @@ public class ThreadedHTTPWorker extends Thread {
         }
     }
 
-    private void parseURI(String req) {
+    private String preprocessReq(String req) {
         int pageURLIndex = 0;
         pageURLIndex = req.indexOf("HTTP");
         String header = req.substring(0, pageURLIndex - 1); // remove HTTP/1.1 or HTTP/1.0
         String relativeURL = header.substring(5); // remove GET / at this version
 
         System.out.println("relativeURL: " + relativeURL);
-        HTTPURIParser parser = new HTTPURIParser(relativeURL);
-        String[] queries = parser.getQueries();
-
-        // The following is showcase of HTTPURIParse, feel free to comment them out
-        System.out.println(parser.ifAdd());
-        System.out.println(parser.ifConfig());
-        System.out.println(parser.ifView());
-        System.out.println(parser.ifStatus());
-        System.out.println(parser.ifConfig());
-        System.out.println(Arrays.toString(queries));
+        return relativeURL;
     }
 
-    private void parseRequest(String req, DataOutputStream out) {
-        System.out.println("Begin to parse request ... ");
+    private void parseURI(String relativeURL) {
+        HTTPURIParser parser = new HTTPURIParser(relativeURL);
+        
+        // This is just a start page to show that server has started
+        // TODO: 
+        // Add functionality so that only valid URIs can be recognized
+        // String path = "./index.html";
+        // File f = new File("./index.html");
+        // sendFullContent(categorizeFile(path), f, f.length());
+
+        if (parser.ifAdd()) {
+            String[] queries = parser.getQueries();
+            addPeer(queries);
+
+            // TODO: tell the backend node the specified information
+            this.queries = queries;
+            System.out.println(Arrays.toString(queries));
+        }
+
+        if (parser.ifView()) {
+            String path = parser.getPath();
+            path = path.replace("peer/view/", "");
+            viewContent(path);
+        }
+
+        if (parser.ifConfig()) {
+            configureRate();
+        }
+
+        if (parser.ifStatus()) {
+            showStatus();
+        }
+    }
+
+    private void addPeer(String[] queries) {
         try {
-            String[] acceptableFiles = {"txt", "css", "html", "gif", "jpg", "png", "js",
-                    "mp4", "webm", "ogg"};
-
-            int pageURLIndex = 0;
-            pageURLIndex = req.indexOf("HTTP");
-            String header = req.substring(0, pageURLIndex - 1); // remove HTTP/1.1 or HTTP/1.0
-            String relativeURL = header.substring(5); // remove GET / at this version
-
-//            System.out.println(relativeURL.length());
-            String extension = relativeURL.substring(5);
-            System.out.println("relativeURL: " + relativeURL);
-
-            if (Arrays.asList(acceptableFiles).contains(extension)) {
-                String path = "src/Content/" + relativeURL;
-                System.out.println("Current file path: " + path);
-                File f = new File(path);
-                long fileSize = f.length();
-                String MIMEType = categorizeFile(path);
-//                System.out.println(MIMEType);
-
-                // check if it is a partial content request
-                if(req.contains("Range: ")) {
-                    String[] lines =  req.split("\r\n");
-                    int start = 0;
-                    int end = 0;
-                    for (String l : lines) {
-                        // check if the line contains "Range: " field
-                        if (l.contains("Range: bytes=")) {
-                            int len = "Range: bytes=".length();
-                            String range = l.substring(len);
-                            String startNum = range.split("-")[0];
-                            String endNum = range.split("-")[1];
-                            start = Integer.parseInt(startNum);
-                            end = Integer.parseInt(endNum);
-                        }
-                    }
-                    sendPartialContent(MIMEType, start, end, f, fileSize);
-//                    System.out.println("Partial content request detected");
-                }
-                else {
-                    sendFullContent(MIMEType, f, fileSize);
-//                    System.out.println("Full content request detected");
-                }
-            }
-            else {
-                String errorResponse = "HTTP/1.1 404 Bad Request" + CRLF + CRLF;
-                out.writeBytes(errorResponse);
-                System.out.println("Error Page Found");
-            }
+            // Pass the queries to backend port
+            // At this stage, we just print them out
+            String response = "HTTP/1.1 200 OK" + this.CRLF +
+            "Date: " + getDateInfo() + " GMT" + this.CRLF +
+            "Connection: keep-alive" + this.CRLF +
+            this.CRLF;
+            this.outputStream.writeBytes(response);
 
         } catch (IOException e) {
             e.printStackTrace();
         }
+
     }
+
+    private void viewContent(String path) {
+        // TODO: 
+        // Add functionality to actually receive content from the server
+        System.out.println("viewPath: " + path);
+        String fileType = categorizeFile(path);
+        File f = new File(path);
+        sendFullContent(fileType, f, f.length());
+    }
+
+    private void configureRate() {
+        // TODO:
+        // Add functionality to actually configure the transfer rate
+    }
+
+    private void showStatus() {
+        // TODO:
+        // Add functionality to actually show the status
+    }
+
+//     private void parseRequest(String req, DataOutputStream out) {
+//         System.out.println("Begin to parse request ... ");
+//         try {
+//             String[] acceptableFiles = {"txt", "css", "html", "gif", "jpg", "png", "js",
+//                     "mp4", "webm", "ogg"};
+
+//             int pageURLIndex = 0;
+//             pageURLIndex = req.indexOf("HTTP");
+//             String header = req.substring(0, pageURLIndex - 1); // remove HTTP/1.1 or HTTP/1.0
+//             String relativeURL = header.substring(5); // remove GET / at this version
+
+// //            System.out.println(relativeURL.length());
+//             String extension = relativeURL.substring(5);
+//             System.out.println("relativeURL: " + relativeURL);
+
+//             if (Arrays.asList(acceptableFiles).contains(extension)) {
+//                 String path = "src/Content/" + relativeURL;
+//                 System.out.println("Current file path: " + path);
+//                 File f = new File(path);
+//                 long fileSize = f.length();
+//                 String MIMEType = categorizeFile(path);
+// //                System.out.println(MIMEType);
+
+//                 // check if it is a partial content request
+//                 if(req.contains("Range: ")) {
+//                     String[] lines =  req.split("\r\n");
+//                     int start = 0;
+//                     int end = 0;
+//                     for (String l : lines) {
+//                         // check if the line contains "Range: " field
+//                         if (l.contains("Range: bytes=")) {
+//                             int len = "Range: bytes=".length();
+//                             String range = l.substring(len);
+//                             String startNum = range.split("-")[0];
+//                             String endNum = range.split("-")[1];
+//                             start = Integer.parseInt(startNum);
+//                             end = Integer.parseInt(endNum);
+//                         }
+//                     }
+//                     sendPartialContent(MIMEType, start, end, f, fileSize);
+// //                    System.out.println("Partial content request detected");
+//                 }
+//                 else {
+//                     sendFullContent(MIMEType, f, fileSize);
+// //                    System.out.println("Full content request detected");
+//                 }
+//             }
+//             else {
+//                 String errorResponse = "HTTP/1.1 404 Bad Request" + CRLF + CRLF;
+//                 out.writeBytes(errorResponse);
+//                 System.out.println("Error Page Found");
+//             }
+
+//         } catch (IOException e) {
+//             e.printStackTrace();
+//         }
+//     }
 
     private String categorizeFile (String path) {
         try {
@@ -207,7 +269,7 @@ public class ThreadedHTTPWorker extends Thread {
                     "Content-Length: " + fileSize + this.CRLF +
                     "Date: " + date + " GMT" + this.CRLF +
                     "Last-Modified: " + formatter.format(f.lastModified()) + " GMT" + this.CRLF +
-                    "Connection: close" + this.CRLF +
+                    "Connection: keep-alive" + this.CRLF + // test purpose
                     this.CRLF;
 //            System.out.println(response);
             this.outputStream.writeBytes(response);

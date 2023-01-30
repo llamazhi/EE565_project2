@@ -22,6 +22,10 @@ public class HTTPURIParser {
         return this.uriObj.getQuery().split("&");
     }
 
+    public String getPath() {
+        return this.path;
+    }
+
     // Return if the uri contains "add" keyword
     public boolean ifAdd() {
         return this.path.contains("add");
