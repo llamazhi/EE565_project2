@@ -17,7 +17,7 @@ public class udpclient {
 		try {
 			requestFilename = args[0];
 		} catch (RuntimeException ex) {
-			System.err.println("Usage: java MyUDPClient filename");
+			System.err.println("Usage: java udpclient filename");
 			return;
 		}
 		// create socket
