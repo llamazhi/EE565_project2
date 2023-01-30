@@ -9,7 +9,7 @@ public class MyUDPServer {
     private final static int PORT = 7707;
     private final static Logger audit = Logger.getLogger("requests");
     private final static Logger errors = Logger.getLogger("errors");
-    private final static int bufferSize = 20;
+    private final static int bufferSize = 1024;
     private static int numPackets = 0;
 
     public static void main(String[] args) {
@@ -37,8 +37,8 @@ public class MyUDPServer {
                         byte[] chunk = new byte[bufferSize];
                         // int bytesRead;
                         while (fis.read(chunk, 4, bufferSize - 4) > 0) {
-                            byte[] chunkNumberBytes = ByteBuffer.allocate(4).putInt(chunkNumber).array();
-                            System.arraycopy(chunkNumberBytes, 0, chunk, 0, 4);
+                            byte[] chunkNumberByte = ByteBuffer.allocate(4).putInt(chunkNumber).array();
+                            System.arraycopy(chunkNumberByte, 0, chunk, 0, 4);
                             chunks.put(chunkNumber, chunk);
                             chunkNumber++;
                             chunk = new byte[bufferSize];

@@ -9,11 +9,10 @@ public class MyUDPClient {
     // private static final String HOSTNAME = "localhost";
     private static int numPackets = 0;
     private static final byte[] ipAddr = new byte[] { 20, 106, 101, (byte) 156 };
-    private final static int bufferSize = 20;
+    private final static int bufferSize = 1024;
     private static Map<Integer, byte[]> receivedChunks = new HashMap<>();
 
     public static void main(String[] args) throws IOException {
-
         try (DatagramSocket socket = new DatagramSocket(0)) {
             // InetAddress host = InetAddress.getByName(HOSTNAME);
             InetAddress host = InetAddress.getByAddress(ipAddr);
@@ -55,14 +54,15 @@ public class MyUDPClient {
                             System.arraycopy(inPkt.getData(), 0, seqnumBytes, 0, 4);
                             int seqnum = ByteBuffer.wrap(seqnumBytes).getInt();
                             if (receivedChunks.containsKey(seqnum)) {
-                                retries = 0; // break out of the loop
+                                break;
                             }
-                            receivedChunks.put(seqnum, inPkt.getData());
+                            byte[] chunk = new byte[bufferSize];
+                            System.arraycopy(inPkt.getData(), 0, chunk, 0, bufferSize);
+                            receivedChunks.put(seqnum, chunk);
                             retries = 0; // break out of loop
-                            result = new String(inPkt.getData(), 4, inPkt.getLength() - 4, "US-ASCII");
-                            // numPackets--;
+                            // result = new String(inPkt.getData(), 4, inPkt.getLength() - 4, "US-ASCII");
                             System.out.println("No. " + seqnum + " received");
-                            System.out.println(result);
+                            // System.out.println(result);
                         } catch (SocketTimeoutException ex) {
                             retries--;
                             if (retries == 0) {
@@ -102,9 +102,10 @@ public class MyUDPClient {
         // write the received numbers to a file in order
         FileOutputStream fos = new FileOutputStream("received.txt");
         for (int i = 1; i <= numPackets; i++) {
-            String result = new String(receivedChunks.get(i), 4, bufferSize - 4, "US-ASCII");
-            System.out.println("No. " + i + " packet");
-            System.out.println(result);
+            // String result = new String(receivedChunks.get(i), 4, bufferSize - 4,
+            // "US-ASCII");
+            // System.out.println("No. " + i + " packet");
+            // System.out.println(result);
             fos.write(receivedChunks.get(i), 4, bufferSize - 4);
         }
         fos.close();
