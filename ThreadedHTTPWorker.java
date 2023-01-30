@@ -82,12 +82,6 @@ public class ThreadedHTTPWorker extends Thread {
 
         String relativeURL = reqComponents[0];
         relativeURL = relativeURL.replace("GET /", "").replace(" HTTP/1.1", "");
-        // relativeURL = relativeURL.replace("HTTP/1.1 ", "");
-
-        // int pageURLIndex = 0;
-        // pageURLIndex = req.indexOf("HTTP");
-        // String header = req.substring(0, pageURLIndex - 1); // remove HTTP/1.1 or HTTP/1.0
-        // relativeURL = header.substring(5); // remove GET / at this version
         
         System.out.println("relativeURL: " + "\"" + relativeURL + "\"");
         return relativeURL;
@@ -147,18 +141,37 @@ public class ThreadedHTTPWorker extends Thread {
     private void viewContent(String req, String path) {
         // TODO: 
         // Add functionality to actually receive content from the server
-        System.out.println("viewPath: " + path);
-        String fileType = categorizeFile(path);
-        File f = new File(path);
-        long fileSize = f.length();
-        if (isRangeRequest(req)) {
-            int[] rangeNum = getRange(req);
-            sendPartialContent(fileType, rangeNum[0], rangeNum[1], f, fileSize);
-        }
-        else {
-            sendFullContent(fileType, f, fileSize);
-        }
+        try {
+            System.out.println("viewPath: " + path);
+            String fileType = categorizeFile(path);
+            File f = new File(path);
+            if (f.exists()) {
+                long fileSize = f.length();
+                if (isRangeRequest(req)) {
+                    int[] rangeNum = getRange(req);
+                    sendPartialContent(fileType, rangeNum[0], rangeNum[1], f, fileSize);
+                }
+                else {
+                    sendFullContent(fileType, f, fileSize);
+                }
+            }
+            else {
+                String response = "HTTP/1.1 404 Not Found" + this.CRLF +
+                this.CRLF;
+                this.outputStream.writeBytes(response);
+                String html = """
+                    <html>
+                        <body>
+                            <p>404 Not Found!</p>
+                        </body>
+                    </html>
+                    """;
+                this.outputStream.writeBytes(html);
+            }
 
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void configureRate() {
