@@ -6,7 +6,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
@@ -45,7 +44,7 @@ public class ThreadedHTTPWorker extends Thread {
             }
 //            System.out.println(req);
             String relativeURL = preprocessReq(req);
-            parseURI(relativeURL);
+            parseURI(req, relativeURL);
         }
         catch (IOException e) {
             System.out.println("Something wrong with connection");
@@ -77,16 +76,24 @@ public class ThreadedHTTPWorker extends Thread {
     }
 
     private String preprocessReq(String req) {
-        int pageURLIndex = 0;
-        pageURLIndex = req.indexOf("HTTP");
-        String header = req.substring(0, pageURLIndex - 1); // remove HTTP/1.1 or HTTP/1.0
-        String relativeURL = header.substring(5); // remove GET / at this version
+        // System.out.println(req);
+        String[] reqComponents = req.split("\r\n");
+        System.out.println("first line: " + reqComponents[0]);
 
-        System.out.println("relativeURL: " + relativeURL);
+        String relativeURL = reqComponents[0];
+        relativeURL = relativeURL.replace("GET /", "").replace(" HTTP/1.1", "");
+        // relativeURL = relativeURL.replace("HTTP/1.1 ", "");
+
+        // int pageURLIndex = 0;
+        // pageURLIndex = req.indexOf("HTTP");
+        // String header = req.substring(0, pageURLIndex - 1); // remove HTTP/1.1 or HTTP/1.0
+        // relativeURL = header.substring(5); // remove GET / at this version
+        
+        System.out.println("relativeURL: " + "\"" + relativeURL + "\"");
         return relativeURL;
     }
 
-    private void parseURI(String relativeURL) {
+    private void parseURI(String req, String relativeURL) {
         HTTPURIParser parser = new HTTPURIParser(relativeURL);
         
         // This is just a start page to show that server has started
@@ -108,7 +115,7 @@ public class ThreadedHTTPWorker extends Thread {
         if (parser.ifView()) {
             String path = parser.getPath();
             path = path.replace("peer/view/", "");
-            viewContent(path);
+            viewContent(req, path);
         }
 
         if (parser.ifConfig()) {
@@ -136,13 +143,22 @@ public class ThreadedHTTPWorker extends Thread {
 
     }
 
-    private void viewContent(String path) {
+    // viewContent extends from the send file functions from project1
+    private void viewContent(String req, String path) {
         // TODO: 
         // Add functionality to actually receive content from the server
         System.out.println("viewPath: " + path);
         String fileType = categorizeFile(path);
         File f = new File(path);
-        sendFullContent(fileType, f, f.length());
+        long fileSize = f.length();
+        if (isRangeRequest(req)) {
+            int[] rangeNum = getRange(req);
+            sendPartialContent(fileType, rangeNum[0], rangeNum[1], f, fileSize);
+        }
+        else {
+            sendFullContent(fileType, f, fileSize);
+        }
+
     }
 
     private void configureRate() {
@@ -155,63 +171,34 @@ public class ThreadedHTTPWorker extends Thread {
         // Add functionality to actually show the status
     }
 
-//     private void parseRequest(String req, DataOutputStream out) {
-//         System.out.println("Begin to parse request ... ");
-//         try {
+    private boolean isRangeRequest(String req) {
+        return req.contains("Range: ");
+    }
+
+    // extract range from request
+    private int[] getRange(String req) {
+        String[] lines =  req.split("\r\n");
+        int start = 0;
+        int end = 0;
+        int[] rangeNum = new int[]{0, 0};
+        for (String l : lines) {
+            // check if the line contains "Range: " field
+            if (l.contains("Range: bytes=")) {
+                int len = "Range: bytes=".length();
+                String range = l.substring(len);
+                String startNum = range.split("-")[0];
+                String endNum = range.split("-")[1];
+                start = Integer.parseInt(startNum);
+                end = Integer.parseInt(endNum);
+                rangeNum[0] = start;
+                rangeNum[1] = end;
+            }
+        }
+        return rangeNum;
+    }
+
 //             String[] acceptableFiles = {"txt", "css", "html", "gif", "jpg", "png", "js",
 //                     "mp4", "webm", "ogg"};
-
-//             int pageURLIndex = 0;
-//             pageURLIndex = req.indexOf("HTTP");
-//             String header = req.substring(0, pageURLIndex - 1); // remove HTTP/1.1 or HTTP/1.0
-//             String relativeURL = header.substring(5); // remove GET / at this version
-
-// //            System.out.println(relativeURL.length());
-//             String extension = relativeURL.substring(5);
-//             System.out.println("relativeURL: " + relativeURL);
-
-//             if (Arrays.asList(acceptableFiles).contains(extension)) {
-//                 String path = "src/Content/" + relativeURL;
-//                 System.out.println("Current file path: " + path);
-//                 File f = new File(path);
-//                 long fileSize = f.length();
-//                 String MIMEType = categorizeFile(path);
-// //                System.out.println(MIMEType);
-
-//                 // check if it is a partial content request
-//                 if(req.contains("Range: ")) {
-//                     String[] lines =  req.split("\r\n");
-//                     int start = 0;
-//                     int end = 0;
-//                     for (String l : lines) {
-//                         // check if the line contains "Range: " field
-//                         if (l.contains("Range: bytes=")) {
-//                             int len = "Range: bytes=".length();
-//                             String range = l.substring(len);
-//                             String startNum = range.split("-")[0];
-//                             String endNum = range.split("-")[1];
-//                             start = Integer.parseInt(startNum);
-//                             end = Integer.parseInt(endNum);
-//                         }
-//                     }
-//                     sendPartialContent(MIMEType, start, end, f, fileSize);
-// //                    System.out.println("Partial content request detected");
-//                 }
-//                 else {
-//                     sendFullContent(MIMEType, f, fileSize);
-// //                    System.out.println("Full content request detected");
-//                 }
-//             }
-//             else {
-//                 String errorResponse = "HTTP/1.1 404 Bad Request" + CRLF + CRLF;
-//                 out.writeBytes(errorResponse);
-//                 System.out.println("Error Page Found");
-//             }
-
-//         } catch (IOException e) {
-//             e.printStackTrace();
-//         }
-//     }
 
     private String categorizeFile (String path) {
         try {
@@ -239,8 +226,6 @@ public class ThreadedHTTPWorker extends Thread {
                                 this.CRLF;
             this.outputStream.writeBytes(partialResponse);
             sendPartialFile(f, rangeStart, rangeEnd);
-
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -269,7 +254,7 @@ public class ThreadedHTTPWorker extends Thread {
                     "Content-Length: " + fileSize + this.CRLF +
                     "Date: " + date + " GMT" + this.CRLF +
                     "Last-Modified: " + formatter.format(f.lastModified()) + " GMT" + this.CRLF +
-                    "Connection: keep-alive" + this.CRLF + // test purpose
+                    "Connection: close" + this.CRLF +
                     this.CRLF;
 //            System.out.println(response);
             this.outputStream.writeBytes(response);
@@ -295,7 +280,6 @@ public class ThreadedHTTPWorker extends Thread {
             // Open the File
             FileInputStream fileInputStream
                     = new FileInputStream(file);
-//            System.out.println("Begin to send file ... ");
 
             // Here we  break file into chunks
             byte[] buffer = new byte[1024];

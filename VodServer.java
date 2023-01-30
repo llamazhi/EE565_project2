@@ -19,7 +19,7 @@ public class VodServer {
         }
 
         try {
-            while(server.isBound() && !server.isClosed()) {
+            while(true) {
                 Socket client = server.accept();
                 System.out.println("Connection accepted");
 
