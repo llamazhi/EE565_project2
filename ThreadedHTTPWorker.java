@@ -87,15 +87,18 @@ public class ThreadedHTTPWorker extends Thread {
 
     private void parseURI(String req, String relativeURL) {
         HTTPURIParser parser = new HTTPURIParser(relativeURL);
-
         // This is just a start page to show that server has started
         // TODO:
         // Add functionality so that only valid URIs can be recognized
-        // String path = "./index.html";
-        // File f = new File("./index.html");
-        // sendFullContent(categorizeFile(path), f, f.length());
+        // Plus, the content
 
-        if (parser.ifAdd()) {
+        if (!parser.hasUDPRequest()) {
+            // System.out.println("local request found");
+            String path = parser.getPath();
+            // path = path.replace("content/", "");
+            System.out.println("local path: " + path);
+            viewContent(req, path);
+        } else if (parser.ifAdd()) {
             String[] queries = parser.getQueries();
             addPeer(queries);
 
