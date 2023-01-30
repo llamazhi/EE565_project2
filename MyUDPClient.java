@@ -1,7 +1,6 @@
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.*;
 
 public class MyUDPClient {
@@ -9,11 +8,11 @@ public class MyUDPClient {
     private final static int PORT = 7707;
     // private static final String HOSTNAME = "localhost";
     private static int numPackets = 0;
-    private static boolean[] ackSeqnum;
     private static final byte[] ipAddr = new byte[] { 20, 106, 101, (byte) 156 };
     private final static int bufferSize = 20;
+    private static Map<Integer, byte[]> receivedChunks = new HashMap<>();
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
 
         try (DatagramSocket socket = new DatagramSocket(0)) {
             // InetAddress host = InetAddress.getByName(HOSTNAME);
@@ -36,8 +35,6 @@ public class MyUDPClient {
                 numPackets = Integer.parseInt(responseValues[0]);
                 int windowSize = Integer.parseInt(responseValues[1]);
                 System.out.println("numPackets: " + numPackets + " windowSize: " + windowSize);
-                ackSeqnum = new boolean[numPackets + 1];
-                Arrays.fill(ackSeqnum, Boolean.FALSE);
 
                 // send request for each chunk
                 for (int i = 0; i < numPackets; i++) {
@@ -48,7 +45,6 @@ public class MyUDPClient {
                     socket.send(outPkt);
                 }
 
-                Map<Integer, byte[]> receivedChunks = new HashMap<>();
                 while (receivedChunks.size() < numPackets) {
                     int retries = 3;
                     while (retries > 0) {
@@ -58,13 +54,15 @@ public class MyUDPClient {
                             seqnumBytes = new byte[4];
                             System.arraycopy(inPkt.getData(), 0, seqnumBytes, 0, 4);
                             int seqnum = ByteBuffer.wrap(seqnumBytes).getInt();
-                            byte[] chunk = inPkt.getData();
-                            receivedChunks.put(seqnum, chunk);
+                            if (receivedChunks.containsKey(seqnum)) {
+                                retries = 0; // break out of the loop
+                            }
+                            receivedChunks.put(seqnum, inPkt.getData());
                             retries = 0; // break out of loop
-                            // result = new String(inPkt.getData(), 4, inPkt.getLength() - 4, "US-ASCII");
+                            result = new String(inPkt.getData(), 4, inPkt.getLength() - 4, "US-ASCII");
                             // numPackets--;
                             System.out.println("No. " + seqnum + " received");
-                            // System.out.println(result);
+                            System.out.println(result);
                         } catch (SocketTimeoutException ex) {
                             retries--;
                             if (retries == 0) {
@@ -94,17 +92,25 @@ public class MyUDPClient {
             } catch (SocketTimeoutException ex) {
                 socket.close();
                 System.err.println("No connection within 1 seconds");
-                for (int i = 1; i <= numPackets; i++) {
-                    if (!ackSeqnum[i]) {
-                        System.out.println("packet No. " + i + " missing");
-                    }
-                }
 
             }
 
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+
+        // write the received numbers to a file in order
+        FileOutputStream fos = new FileOutputStream("received.txt");
+        for (int i = 1; i <= numPackets; i++) {
+            String result = new String(receivedChunks.get(i), 4, bufferSize - 4, "US-ASCII");
+            System.out.println("No. " + i + " packet");
+            System.out.println(result);
+            fos.write(receivedChunks.get(i), 4, bufferSize - 4);
+        }
+        fos.close();
+
+        System.out.println("FROM SERVER: " + receivedChunks.size() + " packets");
+        System.out.println("Received bytes written to file: received.txt");
 
     }
 
