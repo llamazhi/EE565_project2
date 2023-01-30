@@ -20,7 +20,9 @@ public class MyUDPClient {
             System.err.println("Usage: java MyUDPClient filename");
             return;
         }
+        // create socket
         try (DatagramSocket socket = new DatagramSocket(0)) {
+            // send request packet
             // InetAddress host = InetAddress.getByName(HOSTNAME);
             InetAddress host = InetAddress.getByAddress(ipAddr);
             byte[] seqnumBytes = new byte[4];
@@ -32,8 +34,9 @@ public class MyUDPClient {
             DatagramPacket outPkt = new DatagramPacket(requestData, requestData.length, host, PORT);
             DatagramPacket inPkt = new DatagramPacket(new byte[bufferSize], bufferSize);
             socket.send(outPkt);
+
             try {
-                // process the packet...
+                // wait for first packet, and then process the packet...
                 socket.receive(inPkt);
                 String result = new String(inPkt.getData(), 0, inPkt.getLength(), "US-ASCII");
                 System.out.println(result);
@@ -52,11 +55,13 @@ public class MyUDPClient {
                 }
 
                 while (receivedChunks.size() < numPackets) {
+                    System.out.printf("%.2f", 100.0 * receivedChunks.size() / numPackets);
+                    System.out.println(" % complete");
                     int retries = 3;
                     while (retries > 0) {
                         try {
                             socket.receive(inPkt);
-                            socket.setSoTimeout(3000); // wait for response for 3 seconds
+                            socket.setSoTimeout(1000); // wait for response for 3 seconds
                             seqnumBytes = new byte[4];
                             System.arraycopy(inPkt.getData(), 0, seqnumBytes, 0, 4);
                             int seqnum = ByteBuffer.wrap(seqnumBytes).getInt();
@@ -68,7 +73,7 @@ public class MyUDPClient {
                             receivedChunks.put(seqnum, chunk);
                             retries = 0; // break out of loop
                             // result = new String(inPkt.getData(), 4, inPkt.getLength() - 4, "US-ASCII");
-                            System.out.println("No. " + seqnum + " received");
+                            // System.out.println("No. " + seqnum + " received");
                             // System.out.println(result);
                         } catch (SocketTimeoutException ex) {
                             retries--;
@@ -92,20 +97,17 @@ public class MyUDPClient {
                                 }
                             }
                         }
-
                     }
                 }
-
             } catch (SocketTimeoutException ex) {
                 socket.close();
                 System.err.println("No connection within 1 seconds");
-
             }
-
         } catch (IOException ex) {
             ex.printStackTrace();
         }
-
+        System.out.printf("%.2f", 100.0 * receivedChunks.size() / numPackets);
+        System.out.println(" % complete");
         // write the received numbers to a file in order
         FileOutputStream fos = new FileOutputStream("received_" + args[0]);
         for (int i = 1; i <= numPackets; i++) {
