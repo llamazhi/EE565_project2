@@ -1,7 +1,7 @@
 import java.nio.charset.*;
 import java.io.*;
 import java.net.*;
-import java.nio.ByteBuffer;
+import java.nio.*;
 import java.util.*;
 import java.util.logging.*;
 import java.lang.Thread;
@@ -41,7 +41,7 @@ public class ThreadedUDPServerClient extends Thread {
             FileInputStream fis = new FileInputStream("Content/" + requestString);
             int windowSize = 10;
             numPackets = (int) Math.ceil((double) fis.getChannel().size() / (bufferSize - 4));
-            byte[] data = (numPackets + " " + windowSize).getBytes();
+            byte[] data = (numPackets + " " + windowSize).getBytes(Charset.forName("US-ASCII"));
 
             audit.info("Begin to send file ... ");
             // Here we break file into chunks
@@ -112,9 +112,10 @@ public class ThreadedUDPServerClient extends Thread {
                 socket.receive(inPkt);
                 buffer.rewind();
                 int seqnum = buffer.getInt();
+                CharBuffer chbuf = Charset.forName("US-ASCII").decode(buffer);
                 String message = "";
-                while (buffer.hasRemaining()) {
-                    message += buffer.getChar();
+                while (chbuf.hasRemaining()) {
+                    message += chbuf.get();
                 }
                 System.out.println(message);
                 String[] responseValues = message.split(" ");
