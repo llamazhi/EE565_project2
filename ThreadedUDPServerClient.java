@@ -1,3 +1,4 @@
+import java.nio.charset.*;
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
@@ -98,7 +99,7 @@ public class ThreadedUDPServerClient extends Thread {
             InetAddress host = InetAddress.getByAddress(ipAddr);
             ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
             buffer.putInt(0); // seqnum = 0
-            buffer.put(requestFilename.getBytes());
+            buffer.put(requestFilename.getBytes(Charset.forName("US-ASCII")));
             buffer.rewind();
             DatagramPacket outPkt = new DatagramPacket(buffer.array(), buffer.limit(), host, PORT);
             socket.send(outPkt);
