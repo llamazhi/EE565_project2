@@ -104,7 +104,7 @@ public class ThreadedUDPServerClient extends Thread {
             DatagramPacket outPkt = new DatagramPacket(buffer.array(), buffer.limit(), host, PORT);
             socket.send(outPkt);
 
-            DatagramPacket inPkt = new DatagramPacket(buffer.array(), buffer.limit());
+            DatagramPacket inPkt = new DatagramPacket(new byte[bufferSize], bufferSize);
             try {
                 System.out.println("hihihi");
 
