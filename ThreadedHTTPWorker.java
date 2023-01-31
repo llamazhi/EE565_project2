@@ -9,6 +9,7 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 
 // ThreadedHTTPWorker class is responsible for all the
 // actual string & data transfer
@@ -17,10 +18,11 @@ public class ThreadedHTTPWorker extends Thread {
     private DataInputStream inputStream = null;
     private DataOutputStream outputStream = null;
     private final String CRLF = "\r\n";
-    private String[] queries;
+    private HashMap<String, String> parameterMap;
 
     public ThreadedHTTPWorker(Socket client) {
         this.client = client;
+        this.parameterMap = new HashMap<>();
     }
 
     @Override
@@ -91,37 +93,51 @@ public class ThreadedHTTPWorker extends Thread {
         // This is just a start page to show that server has started
         // TODO:
         // Add functionality so that only valid URIs can be recognized
-        // String path = "./index.html";
-        // File f = new File("./index.html");
-        // sendFullContent(categorizeFile(path), f, f.length());
-
+        // try {
         if (!parser.hasUDPRequest()) {
             // This is a local request
             String path = parser.getPath();
             viewContent(req, path);
         } else if (parser.hasAdd()) {
+            // store the parameter information
             String[] queries = parser.getQueries();
             addPeer(queries);
-
-            // TODO: tell the backend node the specified information
-            this.queries = queries;
-            System.out.println(Arrays.toString(queries));
         } else if (parser.hasView()) {
             String path = parser.getPath();
             path = path.replace("peer/view/", "");
+            byte[] buffer = new byte[1024];
+
+            // assume viewContent would return packetNum
+            int count = 0;
             viewContent(req, path);
         } else if (parser.hasConfig()) {
-            configureRate();
+            int rate = Integer.parseInt(this.parameterMap.get("rate"));
+            // configureRate(rate);
         } else if (parser.hasStatus()) {
-            showStatus();
+            String info = getStatus();
+            // this.outputStream.writeBytes(info);
         } else {
             sendErrorResponse();
         }
-
+        // } catch (IOException e) {
+        // e.printStackTrace();
+        // }
     }
 
+    // store the parameter information
     private void addPeer(String[] queries) {
         try {
+            for (String q : queries) {
+                String[] queryComponents = q.split("=");
+                parameterMap.put(queryComponents[0], queryComponents[1]);
+            }
+            System.out.println(parameterMap);
+
+            // may pass the parameters to UDP later
+            String path = parameterMap.get("path");
+            int portNum = Integer.parseInt(parameterMap.get("port"));
+            String host = parameterMap.get("host");
+
             // Pass the queries to backend port
             // At this stage, we just print them out
             String response = "HTTP/1.1 200 OK" + this.CRLF +
@@ -140,20 +156,22 @@ public class ThreadedHTTPWorker extends Thread {
     private void viewContent(String req, String path) {
         // TODO:
         // Add functionality to actually receive content from the server
-        System.out.println("viewPath: " + path);
-        File f = new File(path);
-        if (f.exists()) {
-            String fileType = categorizeFile(path);
-            long fileSize = f.length();
-            if (isRangeRequest(req)) {
-                int[] rangeNum = getRange(req);
-                sendPartialContent(fileType, rangeNum[0], rangeNum[1], f, fileSize);
-            } else {
-                sendFullContent(fileType, f, fileSize);
-            }
-        } else {
-            sendErrorResponse();
-        }
+
+        // System.out.println("viewPath: " + path);
+        // File f = new File(path);
+        // if (f.exists()) {
+        // String fileType = categorizeFile(path);
+        // long fileSize = f.length();
+        // if (isRangeRequest(req)) {
+        // int[] rangeNum = getRange(req);
+        // sendPartialContent(fileType, rangeNum[0], rangeNum[1], f, fileSize);
+        // } else {
+        // sendFullContent(fileType, f, fileSize);
+        // }
+        // } else {
+        // sendErrorResponse();
+        // }
+
     }
 
     private void sendErrorResponse() {
@@ -175,14 +193,15 @@ public class ThreadedHTTPWorker extends Thread {
 
     }
 
-    private void configureRate() {
+    private void configureRate(int rate) {
         // TODO:
         // Add functionality to actually configure the transfer rate
     }
 
-    private void showStatus() {
+    private String getStatus() {
         // TODO:
         // Add functionality to actually show the status
+        return "";
     }
 
     private boolean isRangeRequest(String req) {
