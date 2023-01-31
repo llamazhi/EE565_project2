@@ -93,41 +93,34 @@ public class ThreadedUDPServerClient extends Thread {
 
     private void startClient() {
         try (DatagramSocket socket = new DatagramSocket(0)) {
-            System.out.println("hihihi");
             // send request packet
             // InetAddress host = InetAddress.getByName(HOSTNAME);
             InetAddress host = InetAddress.getByAddress(ipAddr);
-            ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
-            buffer.putInt(0); // seqnum = 0
-            buffer.put(requestFilename.getBytes(Charset.forName("US-ASCII")));
-            buffer.rewind();
-            DatagramPacket outPkt = new DatagramPacket(buffer.array(), buffer.limit(), host, PORT);
-            socket.send(outPkt);
-
+            byte[] seqnumBytes = new byte[4];
+            byte[] requestData = new byte[bufferSize];
+            seqnumBytes = ByteBuffer.allocate(4).putInt(0).array();
+            System.arraycopy(seqnumBytes, 0, requestData, 0, 4);
+            byte[] messageBytes = requestFilename.getBytes();
+            System.arraycopy(messageBytes, 0, requestData, 4, messageBytes.length);
+            DatagramPacket outPkt = new DatagramPacket(requestData, requestData.length, host, PORT);
             DatagramPacket inPkt = new DatagramPacket(new byte[bufferSize], bufferSize);
+            socket.send(outPkt);
             try {
-                System.out.println("hihihi");
-
                 // wait for first packet, and then process the packet...
                 socket.receive(inPkt);
-                buffer.rewind();
-                int seqnum = buffer.getInt();
-                CharBuffer chbuf = Charset.forName("US-ASCII").decode(buffer);
-                String message = "";
-                while (chbuf.hasRemaining()) {
-                    message += chbuf.get();
-                }
-                System.out.println(message);
-                String[] responseValues = message.split(" ");
+                String result = new String(inPkt.getData(), 0, inPkt.getLength(), "US-ASCII");
+                System.out.println(result);
+                String[] responseValues = result.split(" ");
                 numPackets = Integer.parseInt(responseValues[0]);
                 int windowSize = Integer.parseInt(responseValues[1]);
                 System.out.println("numPackets: " + numPackets + " windowSize: " + windowSize);
 
                 // send request for each chunk
                 for (int i = 1; i <= numPackets; i++) {
-                    buffer.rewind();
-                    buffer.putInt(i); // seqnum, start from 1
-                    outPkt = new DatagramPacket(buffer.array(), buffer.limit(), host, PORT);
+                    // requestData = new byte[bufferSize];
+                    seqnumBytes = ByteBuffer.allocate(4).putInt(i).array();
+                    System.arraycopy(seqnumBytes, 0, requestData, 0, 4);
+                    outPkt = new DatagramPacket(requestData, requestData.length, host, PORT);
                     socket.send(outPkt);
                 }
 
@@ -139,12 +132,15 @@ public class ThreadedUDPServerClient extends Thread {
                         try {
                             socket.setSoTimeout(1000); // wait for response for 3 seconds
                             socket.receive(inPkt);
-                            buffer.rewind();
-                            seqnum = buffer.getInt();
+                            seqnumBytes = new byte[4];
+                            System.arraycopy(inPkt.getData(), 0, seqnumBytes, 0, 4);
+                            int seqnum = ByteBuffer.wrap(seqnumBytes).getInt();
                             if (receivedChunks.containsKey(seqnum)) {
                                 break;
                             }
-                            receivedChunks.put(seqnum, buffer.duplicate().array());
+                            byte[] chunk = new byte[bufferSize];
+                            System.arraycopy(inPkt.getData(), 0, chunk, 0, bufferSize);
+                            receivedChunks.put(seqnum, chunk);
                             retries = 0; // break out of loop
                             // result = new String(inPkt.getData(), 4, inPkt.getLength() - 4, "US-ASCII");
                             // System.out.println("No. " + seqnum + " received");
@@ -163,9 +159,10 @@ public class ThreadedUDPServerClient extends Thread {
                                 // resend requests for numbers that haven't been received
                                 for (int i = 1; i <= numPackets; i++) {
                                     if (!receivedChunks.containsKey(i)) {
-                                        buffer.rewind();
-                                        buffer.putInt(i); // missing seqnum
-                                        outPkt = new DatagramPacket(buffer.array(), buffer.limit(), host, PORT);
+                                        requestData = new byte[bufferSize];
+                                        seqnumBytes = ByteBuffer.allocate(4).putInt(i).array();
+                                        System.arraycopy(seqnumBytes, 0, requestData, 0, 4);
+                                        outPkt = new DatagramPacket(requestData, requestData.length, host, PORT);
                                         socket.send(outPkt);
                                     }
                                 }
