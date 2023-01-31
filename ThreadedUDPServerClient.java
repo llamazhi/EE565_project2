@@ -7,17 +7,20 @@ import java.util.logging.*;
 import java.lang.Thread;
 
 public class ThreadedUDPServerClient extends Thread {
-    private String mode;
-    private int PORT;
-    // private static final String HOSTNAME = "localhost";
-    private static int numPackets = 0;
-    private static final byte[] ipAddr = new byte[] { 20, 106, 101, (byte) 156 };
-    private final static int bufferSize = 1024;
-    private static Map<Integer, byte[]> receivedChunks = new HashMap<>();
-    private String requestFilename;
     private final static Logger audit = Logger.getLogger("requests");
     private final static Logger errors = Logger.getLogger("errors");
+
+    private String mode;
+
+    private int PORT;
+    // private static final String HOSTNAME = "localhost";
+    private static final byte[] ipAddr = new byte[] { 20, 106, 101, (byte) 156 };
+
+    private String requestFilename;
+    private static int numChunks = 0;
+    private final static int bufferSize = 1024;
     private static Map<Integer, byte[]> chunks = new HashMap<>();
+    private static Map<Integer, byte[]> receivedChunks = new HashMap<>();
 
     public ThreadedUDPServerClient(String filename, int port, String mode) {
         this.PORT = port;
@@ -35,19 +38,19 @@ public class ThreadedUDPServerClient extends Thread {
         int seqnum = ByteBuffer.wrap(seqnumBytes).getInt();
         String requestString = new String(inPkt.getData(), 4, inPkt.getLength() - 4).trim();
 
-        if (!requestString.isEmpty()) {
+        if (seqnum == 0 && !requestString.isEmpty()) {
             // request for a file
-            audit.info(requestString);
+            audit.info("Client request for file " + requestString);
             FileInputStream fis = new FileInputStream("Content/" + requestString);
             int windowSize = 10;
-            numPackets = (int) Math.ceil((double) fis.getChannel().size() / (bufferSize - 4));
-            byte[] data = (numPackets + " " + windowSize).getBytes(Charset.forName("US-ASCII"));
+            numChunks = (int) Math.ceil((double) fis.getChannel().size() / (bufferSize - 4));
+            byte[] data = (numChunks + " " + windowSize).getBytes(Charset.forName("US-ASCII"));
 
             audit.info("Begin to send file ... ");
+
             // Here we break file into chunks
             int chunkNumber = 1;
             byte[] chunk = new byte[bufferSize];
-            // int bytesRead;
             while (fis.read(chunk, 4, bufferSize - 4) > 0) {
                 byte[] chunkNumberByte = ByteBuffer.allocate(4).putInt(chunkNumber).array();
                 System.arraycopy(chunkNumberByte, 0, chunk, 0, 4);
@@ -56,13 +59,15 @@ public class ThreadedUDPServerClient extends Thread {
                 chunk = new byte[bufferSize];
             }
             fis.close();
+
+            // send response packet
             DatagramPacket outPkt = new DatagramPacket(data, data.length, inPkt.getAddress(),
                     inPkt.getPort());
             socket.send(outPkt);
-            audit.info(numPackets + " " + windowSize + " " + inPkt.getAddress());
-        } else if (seqnum > 0 && seqnum <= numPackets) {
+            audit.info(numChunks + " chunks in total");
+        } else if (seqnum > 0 && seqnum <= numChunks) {
             // request for specific chunk of data
-            audit.info("request seqnum: " + seqnum);
+            audit.info("Client request chunk seqnum: " + seqnum);
             DatagramPacket outPkt = new DatagramPacket(chunks.get(seqnum),
                     chunks.get(seqnum).length,
                     inPkt.getAddress(),
@@ -111,12 +116,12 @@ public class ThreadedUDPServerClient extends Thread {
                 String result = new String(inPkt.getData(), 0, inPkt.getLength(), "US-ASCII");
                 System.out.println(result);
                 String[] responseValues = result.split(" ");
-                numPackets = Integer.parseInt(responseValues[0]);
+                numChunks = Integer.parseInt(responseValues[0]);
                 int windowSize = Integer.parseInt(responseValues[1]);
-                System.out.println("numPackets: " + numPackets + " windowSize: " + windowSize);
+                System.out.println("numChunks: " + numChunks + " windowSize: " + windowSize);
 
                 // send request for each chunk
-                for (int i = 1; i <= numPackets; i++) {
+                for (int i = 1; i <= numChunks; i++) {
                     // requestData = new byte[bufferSize];
                     seqnumBytes = ByteBuffer.allocate(4).putInt(i).array();
                     System.arraycopy(seqnumBytes, 0, requestData, 0, 4);
@@ -124,8 +129,8 @@ public class ThreadedUDPServerClient extends Thread {
                     socket.send(outPkt);
                 }
 
-                while (receivedChunks.size() < numPackets) {
-                    System.out.printf("%.2f", 100.0 * receivedChunks.size() / numPackets);
+                while (receivedChunks.size() < numChunks) {
+                    System.out.printf("%.2f", 100.0 * receivedChunks.size() / numChunks);
                     System.out.println(" % complete");
                     int retries = 3;
                     while (retries > 0) {
@@ -157,7 +162,7 @@ public class ThreadedUDPServerClient extends Thread {
                                                 + retries);
 
                                 // resend requests for numbers that haven't been received
-                                for (int i = 1; i <= numPackets; i++) {
+                                for (int i = 1; i <= numChunks; i++) {
                                     if (!receivedChunks.containsKey(i)) {
                                         requestData = new byte[bufferSize];
                                         seqnumBytes = ByteBuffer.allocate(4).putInt(i).array();
@@ -174,7 +179,7 @@ public class ThreadedUDPServerClient extends Thread {
                 socket.close();
                 System.err.println("No connection within 1 seconds");
             } finally {
-                System.out.printf("%.2f", 100.0 * receivedChunks.size() / numPackets);
+                System.out.printf("%.2f", 100.0 * receivedChunks.size() / numChunks);
                 System.out.println(" % complete");
                 System.out.println("FROM SERVER: " + receivedChunks.size() + " packets");
                 System.out.println("Received bytes written to file: received_" + requestFilename);
