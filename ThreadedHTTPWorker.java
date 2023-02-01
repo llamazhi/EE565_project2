@@ -18,11 +18,17 @@ public class ThreadedHTTPWorker extends Thread {
     private DataInputStream inputStream = null;
     private DataOutputStream outputStream = null;
     private final String CRLF = "\r\n";
-    private HashMap<String, String> parameterMap;
+    private Integer reqNum;
+    private HashMap<Integer, HashMap<String, String>> parameterMap;
 
     public ThreadedHTTPWorker(Socket client) {
         this.client = client;
         this.parameterMap = new HashMap<>();
+        this.reqNum = 0;
+    }
+
+    public HashMap<Integer, HashMap<String, String>> getParameters() {
+        return this.parameterMap;
     }
 
     @Override
@@ -111,7 +117,8 @@ public class ThreadedHTTPWorker extends Thread {
             int count = 0;
             viewContent(req, path);
         } else if (parser.hasConfig()) {
-            int rate = Integer.parseInt(this.parameterMap.get("rate"));
+
+            // int rate = Integer.parseInt(this.parameterMap.get("rate"));
             // configureRate(rate);
         } else if (parser.hasStatus()) {
             String info = getStatus();
@@ -127,16 +134,21 @@ public class ThreadedHTTPWorker extends Thread {
     // store the parameter information
     private void addPeer(String[] queries) {
         try {
+            this.reqNum += 1;
+            HashMap<String, String> params = new HashMap<>();
             for (String q : queries) {
                 String[] queryComponents = q.split("=");
-                parameterMap.put(queryComponents[0], queryComponents[1]);
+                params.put(queryComponents[0], queryComponents[1]);
             }
+            parameterMap.put(this.reqNum, params);
+            // pass params to UDP server
+
             System.out.println(parameterMap);
 
             // may pass the parameters to UDP later
-            String path = parameterMap.get("path");
-            int portNum = Integer.parseInt(parameterMap.get("port"));
-            String host = parameterMap.get("host");
+            // String path = parameterMap.get("path");
+            // int portNum = Integer.parseInt(parameterMap.get("port"));
+            // String host = parameterMap.get("host");
 
             // Pass the queries to backend port
             // At this stage, we just print them out
