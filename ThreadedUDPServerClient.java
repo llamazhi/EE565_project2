@@ -4,6 +4,7 @@ import java.net.*;
 import java.nio.*;
 import java.util.*;
 import java.util.logging.*;
+
 import java.lang.Thread;
 
 public class ThreadedUDPServerClient extends Thread {
@@ -12,9 +13,11 @@ public class ThreadedUDPServerClient extends Thread {
 
     private String mode;
 
-    private int PORT;
-    // private static final String HOSTNAME = "localhost";
-    private static final byte[] ipAddr = new byte[] { 20, 106, 101, (byte) 156 };
+    // private int PORT;
+    private int serverPort;
+    private int clientPort;
+    private static final String HOSTNAME = "localhost";
+    // private static final byte[] ipAddr = new byte[] { 20, 106, 101, (byte) 156 };
 
     private String requestFilename;
     private static int totalChunkSize = 0;
@@ -22,13 +25,19 @@ public class ThreadedUDPServerClient extends Thread {
     private static Map<Integer, byte[]> fileChunks = new HashMap<>();
     private static Map<Integer, byte[]> receivedChunks = new HashMap<>();
     private final static int MAX_WINDOW_SIZE = 10;
-    private static int windowStart = 0;
+    private static int windowStart = 1;
     private static int windowEnd = windowStart + MAX_WINDOW_SIZE - 1;
 
     public ThreadedUDPServerClient(String filename, int port, String mode) {
-        this.PORT = port;
+        // this.PORT = port;
         this.requestFilename = filename;
-        changeMode(mode);
+        // changeMode(mode);
+        this.mode = mode;
+        if (mode.equals("SERVER")) {
+            this.serverPort = port;
+        } else {
+            this.clientPort = port;
+        }
     }
 
     public void changeMode(String mode) {
@@ -44,9 +53,10 @@ public class ThreadedUDPServerClient extends Thread {
         if (seqNum == 0 && !requestString.isEmpty()) {
             // request for a file
             audit.info("Client request for file " + requestString);
-            FileInputStream fis = new FileInputStream("Content/" + requestString);
+            FileInputStream fis = new FileInputStream("content/" + requestString);
             // int windowSize = 10;
             totalChunkSize = (int) Math.ceil((double) fis.getChannel().size() / (bufferSize - 4));
+            System.out.println("current file size: " + totalChunkSize);
             byte[] data = (totalChunkSize + " " + MAX_WINDOW_SIZE).getBytes(Charset.forName("US-ASCII"));
 
             audit.info("Begin to send file ... ");
@@ -64,8 +74,10 @@ public class ThreadedUDPServerClient extends Thread {
             fis.close();
 
             // send response packet
-            DatagramPacket outPkt = new DatagramPacket(data, data.length, inPkt.getAddress(),
-                    inPkt.getPort());
+            // DatagramPacket outPkt = new DatagramPacket(data, data.length,
+            // inPkt.getAddress(),
+            // inPkt.getPort());
+            DatagramPacket outPkt = new DatagramPacket(data, data.length, inPkt.getAddress(), inPkt.getPort());
             socket.send(outPkt);
             audit.info(totalChunkSize + " chunks in total");
 
@@ -87,12 +99,14 @@ public class ThreadedUDPServerClient extends Thread {
     }
 
     private void startServer() {
-        try (DatagramSocket socket = new DatagramSocket(this.PORT)) {
+        try (DatagramSocket socket = new DatagramSocket(this.serverPort)) {
+            System.out.println("UDP Server listening at: " + this.serverPort);
+
             // keep listening if the mode is SERVER
             while (mode.equals("SERVER")) {
                 try {
                     DatagramPacket inPkt = new DatagramPacket(new byte[bufferSize], bufferSize);
-                    socket.setSoTimeout(1000); // listening for response for 1000 ms
+                    // socket.setSoTimeout(1000); // listening for response for 1000 ms
                     socket.receive(inPkt);
                     handleInPacket(inPkt, socket);
                 } catch (SocketTimeoutException ex) {
@@ -107,17 +121,19 @@ public class ThreadedUDPServerClient extends Thread {
     }
 
     private void startClient() {
-        try (DatagramSocket socket = new DatagramSocket(0)) {
+        try (DatagramSocket socket = new DatagramSocket(this.clientPort)) {
+            System.out.println("Client started at: " + this.clientPort);
+
             // send request packet
-            // InetAddress host = InetAddress.getByName(HOSTNAME);
-            InetAddress host = InetAddress.getByAddress(ipAddr);
+            InetAddress host = InetAddress.getByName(HOSTNAME);
+            // InetAddress host = InetAddress.getByAddress(ipAddr);
             byte[] seqNumBytes = new byte[4];
             byte[] requestData = new byte[bufferSize];
             seqNumBytes = ByteBuffer.allocate(4).putInt(0).array();
             System.arraycopy(seqNumBytes, 0, requestData, 0, 4);
             byte[] messageBytes = requestFilename.getBytes();
             System.arraycopy(messageBytes, 0, requestData, 4, messageBytes.length);
-            DatagramPacket outPkt = new DatagramPacket(requestData, requestData.length, host, PORT);
+            DatagramPacket outPkt = new DatagramPacket(requestData, requestData.length, host, 8080);
             DatagramPacket inPkt = new DatagramPacket(new byte[bufferSize], bufferSize);
             socket.send(outPkt);
 
@@ -125,27 +141,32 @@ public class ThreadedUDPServerClient extends Thread {
                 // wait for first packet, and then process the packet...
                 socket.receive(inPkt);
                 String result = new String(inPkt.getData(), 0, inPkt.getLength(), "US-ASCII");
-                System.out.println(result);
+                // System.out.println(result);
                 String[] responseValues = result.split(" ");
                 totalChunkSize = Integer.parseInt(responseValues[0]);
                 int windowSize = Integer.parseInt(responseValues[1]);
                 System.out.println("numChunks: " + totalChunkSize + " windowSize: " + windowSize);
                 System.out.println("windowStart: " + windowStart + " , windowEnd: " + windowEnd);
 
-                // send request for each chunk within the window
-                for (int i = windowStart; i < windowEnd; i++) {
-                    // requestData = new byte[bufferSize];
-                    seqNumBytes = ByteBuffer.allocate(4).putInt(i).array();
-                    System.arraycopy(seqNumBytes, 0, requestData, 0, 4);
-                    outPkt = new DatagramPacket(requestData, requestData.length, host, PORT);
-                    socket.send(outPkt);
-                }
-
                 // slide window until the rightmost end hits the end of chunks
-                while (windowEnd < totalChunkSize) {
+                // another condition to start receiving files is totalChunkSize is even smaller
+                // than windowSize
+                while (windowEnd <= totalChunkSize || totalChunkSize <= windowSize) {
+                    System.out.println("Current windowEnd: " + windowEnd);
+
+                    // send request for each chunk within the window
+                    for (int i = windowStart; i <= windowEnd; i++) {
+                        // requestData = new byte[bufferSize];
+                        seqNumBytes = ByteBuffer.allocate(4).putInt(i).array();
+                        System.arraycopy(seqNumBytes, 0, requestData, 0, 4);
+                        outPkt = new DatagramPacket(requestData, requestData.length, host, 8080);
+                        socket.send(outPkt);
+                    }
+
+                    System.out.println("This round of packets have been requested");
 
                     // attempt to receive packet within the window
-                    for (int i = windowStart; i < windowEnd; i++) {
+                    for (int i = windowStart; i <= windowEnd; i++) {
                         socket.receive(inPkt);
                         seqNumBytes = new byte[4];
                         System.arraycopy(inPkt.getData(), 0, seqNumBytes, 0, 4);
@@ -162,63 +183,17 @@ public class ThreadedUDPServerClient extends Thread {
                         }
                     }
 
+                    // move the window by 1 packet if the leftmost packet has been received
+                    if (receivedChunks.containsKey(windowStart)) {
+                        System.out.println("Receive the leftmost packet, time to slide window");
+                        windowStart += 1;
+                        windowEnd = windowStart + windowSize - 1;
+                    }
+
                     System.out.printf("%.2f", 100.0 * receivedChunks.size() / totalChunkSize);
                     System.out.println(" % complete");
                 }
-                // move the window by 1 packet if the leftmost packet has been received
-                if (receivedChunks.containsKey(windowStart)) {
-                    windowStart += 1;
-                    windowEnd = windowStart + windowSize - 1;
-                }
 
-                // while (receivedChunks.size() < totalChunkSize) {
-                // System.out.printf("%.2f", 100.0 * receivedChunks.size() / totalChunkSize);
-                // System.out.println(" % complete");
-                // int retries = 3;
-                // while (retries > 0) {
-                // try {
-                // socket.setSoTimeout(1000); // wait for response for 3 seconds
-                // socket.receive(inPkt);
-                // seqNumBytes = new byte[4];
-                // System.arraycopy(inPkt.getData(), 0, seqNumBytes, 0, 4);
-                // int seqnum = ByteBuffer.wrap(seqNumBytes).getInt();
-                // if (receivedChunks.containsKey(seqnum)) {
-                // break;
-                // }
-                // byte[] chunk = new byte[bufferSize];
-                // System.arraycopy(inPkt.getData(), 0, chunk, 0, bufferSize);
-                // receivedChunks.put(seqnum, chunk);
-                // retries = 0; // break out of loop
-                // // result = new String(inPkt.getData(), 4, inPkt.getLength() - 4,
-                // "US-ASCII");
-                // // System.out.println("No. " + seqnum + " received");
-                // // System.out.println(result);
-                // } catch (SocketTimeoutException ex) {
-                // retries--;
-                // if (retries == 0) {
-                // System.out.println(
-                // "Error: Could not receive response from server after multiple retries for
-                // some numbers");
-                // break;
-                // } else {
-                // System.out.println(
-                // "Retransmitting requests for un-received numbers... Retries remaining: "
-                // + retries);
-
-                // // resend requests for numbers that haven't been received
-                // for (int i = 1; i <= totalChunkSize; i++) {
-                // if (!receivedChunks.containsKey(i)) {
-                // requestData = new byte[bufferSize];
-                // seqNumBytes = ByteBuffer.allocate(4).putInt(i).array();
-                // System.arraycopy(seqNumBytes, 0, requestData, 0, 4);
-                // outPkt = new DatagramPacket(requestData, requestData.length, host, PORT);
-                // socket.send(outPkt);
-                // }
-                // }
-                // }
-                // }
-                // }
-                // }
             } catch (SocketTimeoutException ex) {
                 socket.close();
                 System.err.println("No connection within 1 seconds");
@@ -227,7 +202,7 @@ public class ThreadedUDPServerClient extends Thread {
                 System.out.println(" % complete");
                 System.out.println("FROM SERVER: " + receivedChunks.size() + " packets");
                 System.out.println("Received bytes written to file: received_" + requestFilename);
-                this.mode = "SERVER";
+                // this.mode = "SERVER";
             }
         } catch (IOException ex) {
             ex.printStackTrace();
@@ -239,10 +214,12 @@ public class ThreadedUDPServerClient extends Thread {
         while (true) {
             if (this.mode.equals("SERVER")) {
                 startServer();
+            } else {
+                startClient();
             }
             // CLIENT mode
-            startClient();
-            this.mode = "SERVER";
+            // startClient();
+            // this.mode = "SERVER";
         }
 
     }
@@ -266,15 +243,17 @@ public class ThreadedUDPServerClient extends Thread {
 
         // set mode, default to SERVER
         String mode = args[2];
-        ThreadedUDPServerClient server = new ThreadedUDPServerClient(fileName, port, mode);
+        ThreadedUDPServerClient server = new ThreadedUDPServerClient(fileName, port,
+                mode);
+        // System.out.println(mode);
         server.start();
-        Scanner scanner = new Scanner(System.in);
-        while (!mode.equals("EXIT")) {
-            System.out.println("Enter mode (CLIENT/SERVER/EXIT):");
-            mode = scanner.nextLine();
-            server.changeMode(mode);
-        }
-        scanner.close();
+        // Scanner scanner = new Scanner(System.in);
+        // while (!mode.equals("EXIT")) {
+        // System.out.println("Enter mode (CLIENT/SERVER/EXIT):");
+        // mode = scanner.nextLine();
+        // server.changeMode(mode);
+        // }
+        // scanner.close();
 
     }
 }
