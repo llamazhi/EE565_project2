@@ -22,11 +22,14 @@ public class VodServerNode {
         }
 
         try {
+            ThreadedUDPServerClient udpserver = new ThreadedUDPServerClient(port, "SERVER");
+            udpserver.start();
+
             while (true) {
                 Socket client = server.accept();
                 System.out.println("Connection accepted");
 
-                ThreadedHTTPWorker workerThread = new ThreadedHTTPWorker(client);
+                ThreadedHTTPWorker workerThread = new ThreadedHTTPWorker(client, udpserver);
                 workerThread.start();
                 // System.out.println("New worker thread built");
             }

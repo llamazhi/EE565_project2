@@ -20,9 +20,11 @@ public class ThreadedHTTPWorker extends Thread {
     private final String CRLF = "\r\n";
     private Integer reqNum;
     private HashMap<Integer, HashMap<String, String>> parameterMap;
+    private ThreadedUDPServerClient udpserver;
 
-    public ThreadedHTTPWorker(Socket client) {
+    public ThreadedHTTPWorker(Socket client, ThreadedUDPServerClient udpserver) {
         this.client = client;
+        this.udpserver = udpserver;
         this.parameterMap = new HashMap<>();
         this.reqNum = 0;
     }
@@ -103,7 +105,7 @@ public class ThreadedHTTPWorker extends Thread {
         if (!parser.hasUDPRequest()) {
             // This is a local request
             String path = parser.getPath();
-            viewContent(req, path);
+            viewContent(path);
         } else if (parser.hasAdd()) {
             // store the parameter information
             String[] queries = parser.getQueries();
@@ -115,7 +117,7 @@ public class ThreadedHTTPWorker extends Thread {
 
             // assume viewContent would return packetNum
             int count = 0;
-            viewContent(req, path);
+            viewContent(path);
         } else if (parser.hasConfig()) {
 
             // int rate = Integer.parseInt(this.parameterMap.get("rate"));
@@ -165,7 +167,7 @@ public class ThreadedHTTPWorker extends Thread {
     }
 
     // viewContent extends from the send file functions from project1
-    private void viewContent(String req, String path) {
+    private void viewContent(String path) {
         // TODO:
         // Add functionality to actually receive content from the server
 

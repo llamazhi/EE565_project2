@@ -28,9 +28,9 @@ public class ThreadedUDPServerClient extends Thread {
     private static int windowStart = 1;
     private static int windowEnd = windowStart + MAX_WINDOW_SIZE - 1;
 
-    public ThreadedUDPServerClient(String filename, int port, String mode) {
+    public ThreadedUDPServerClient(int port, String mode) {
         // this.PORT = port;
-        this.requestFilename = filename;
+        // this.requestFilename = filename;
         // changeMode(mode);
         this.mode = mode;
         if (mode.equals("SERVER")) {
@@ -42,6 +42,10 @@ public class ThreadedUDPServerClient extends Thread {
 
     public void changeMode(String mode) {
         this.mode = mode;
+    }
+
+    public void setRequestFilename(String filename) {
+        this.requestFilename = filename;
     }
 
     private void handleInPacket(DatagramPacket inPkt, DatagramSocket socket) throws IOException {
@@ -226,10 +230,9 @@ public class ThreadedUDPServerClient extends Thread {
 
     public static void main(String[] args) {
         if (args.length == 0) {
-            System.out.println("Usage: java udpclient file port mode");
+            System.out.println("Usage: java ThreadedUDPServerClient mode port filename");
             return;
         }
-        String fileName = args[0];
 
         // set the port to listen on
         int port;
@@ -242,11 +245,20 @@ public class ThreadedUDPServerClient extends Thread {
         }
 
         // set mode, default to SERVER
-        String mode = args[2];
-        ThreadedUDPServerClient server = new ThreadedUDPServerClient(fileName, port,
-                mode);
-        // System.out.println(mode);
-        server.start();
+        String mode = args[0];
+        if (!mode.equals("SERVER")) {
+            if (args.length != 3) {
+                System.out.println("Usage: java ThreadedUDPServerClient port mode filename");
+                return;
+            }
+            String filename = args[2];
+            ThreadedUDPServerClient client = new ThreadedUDPServerClient(port, mode);
+            client.setRequestFilename(filename);
+            client.start();
+        } else {
+            ThreadedUDPServerClient server = new ThreadedUDPServerClient(port, mode);
+            server.start();
+        }
         // Scanner scanner = new Scanner(System.in);
         // while (!mode.equals("EXIT")) {
         // System.out.println("Enter mode (CLIENT/SERVER/EXIT):");
