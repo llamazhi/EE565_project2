@@ -6,7 +6,6 @@ import java.util.*;
 public class UDPClient {
     private final static int bufferSize = 1024;
     private Map<Integer, byte[]> receivedChunks;
-    private boolean isActive;
     private long requestFileSize;
     private long requestFileLastModified;
     private int numChunks;
@@ -14,10 +13,6 @@ public class UDPClient {
     private String requestFilename;
     private int remoteServerPort;
     private String remoteServerHostname;
-
-    public UDPClient(boolean isActive) {
-        this.isActive = isActive;
-    }
 
     public void deactivate() {
         this.isActive = false;

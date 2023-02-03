@@ -155,6 +155,7 @@ public class ThreadedHTTPWorker extends Thread {
     private void viewContent(String path) {
         // TODO:
         // Add functionality to actually receive content from the server
+        UDPClient udpclient = new UDPClient();
         this.udpserver.setRequestFilename(path);
         RemoteServerInfo info = this.parameterMap.get(path);
         this.udpserver.setRemoteServerHostname(info.hostname);
