@@ -219,13 +219,7 @@ public class ThreadedHTTPWorker extends Thread {
             String response = "HTTP/1.1 404 Not Found" + this.CRLF +
                     this.CRLF;
             this.outputStream.writeBytes(response);
-            String html = """
-                    <html>
-                        <body>
-                            <p>404 Not Found!</p>
-                        </body>
-                    </html>
-                    """;
+            String html = "<html><body><p>404 Not Found!</p></body></html>";
             this.outputStream.writeBytes(html);
         } catch (IOException e) {
             e.printStackTrace();
