@@ -142,11 +142,7 @@ public class ThreadedHTTPWorker extends Thread {
             int port = Integer.parseInt(keyValue.get("port"));
             String host = keyValue.get("host");
             RemoteServerInfo info = new RemoteServerInfo(host, port);
-            if (!this.parameterMap.containsKey(path)) {
-                this.parameterMap.put(path, new ArrayList<RemoteServerInfo>());
-            }
-            this.parameterMap.get(path).add(info);
-            System.out.println(parameterMap);
+            VodServer.addPeer(path, info);
             // Pass the queries to backend port
             // At this stage, we just print them out
             String response = "HTTP/1.1 200 OK" + this.CRLF +
@@ -163,8 +159,9 @@ public class ThreadedHTTPWorker extends Thread {
 
     private void viewContent(String path) {
         UDPClient udpclient = new UDPClient();
-        RemoteServerInfo info = this.parameterMap.get(path).get(0); // TODO: get chunks from multiple remote servers
-        udpclient.startClient(path, info);
+        ArrayList<RemoteServerInfo> infos = VodServer.getRemoteServerInfo(path); // TODO: get chunks from multiple
+                                                                                 // remote servers
+        udpclient.startClient(path, infos.get(0));
 
         try {
             String date = getDateInfo();
