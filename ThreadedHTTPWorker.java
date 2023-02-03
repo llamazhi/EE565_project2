@@ -170,6 +170,44 @@ public class ThreadedHTTPWorker extends Thread {
     private void viewContent(String path) {
         // TODO:
         // Add functionality to actually receive content from the server
+        this.udpserver.setRequestFilename(path);
+        this.udpserver.setRemoteServerHostname();
+        this.udpserver.setRemoteServerPort();
+        this.udpserver.changeMode("CLIENT");
+        long fileSize = this.udpserver.getRequestFileSize();
+
+        try {
+            String date = getDateInfo();
+            DateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy hh:mm:ss");
+            String MIMEType = categorizeFile(path);
+            String response = "HTTP/1.1 200 OK" + this.CRLF +
+                    "Content-Type: " + MIMEType + this.CRLF +
+                    "Content-Length: " + fileSize + this.CRLF +
+                    "Date: " + date + " GMT" + this.CRLF +
+                    "Last-Modified: " + formatter.format(f.lastModified()) + " GMT" + this.CRLF +
+                    "Connection: close" + this.CRLF +
+                    this.CRLF;
+            // System.out.println(response);
+            this.outputStream.writeBytes(response);
+            System.out.println("Response header sent ... ");
+            int bytes = 0;
+
+            // Open the File
+            FileInputStream fileInputStream = new FileInputStream(f);
+
+            // Here we break file into chunks
+            byte[] buffer = new byte[1024];
+            while ((bytes = fileInputStream.read(buffer)) != -1) {
+                // Send the file
+                this.outputStream.write(buffer, 0, bytes); // file content
+                this.outputStream.flush(); // flush all the contents into stream
+            }
+            // close the file here
+            fileInputStream.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         // System.out.println("viewPath: " + path);
         // File f = new File(path);
@@ -180,7 +218,7 @@ public class ThreadedHTTPWorker extends Thread {
         // int[] rangeNum = getRange(req);
         // sendPartialContent(fileType, rangeNum[0], rangeNum[1], f, fileSize);
         // } else {
-        // sendFullContent(fileType, f, fileSize);
+        // sendFullContent(path);
         // }
         // } else {
         // sendErrorResponse();
@@ -291,13 +329,15 @@ public class ThreadedHTTPWorker extends Thread {
         }
     }
 
-    private void sendFullContent(String MIMEType, File f, long fileSize) {
+    private void sendFullContent(String path) {
         try {
+            File f = new File(path);
             String date = getDateInfo();
             DateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy hh:mm:ss");
+            String MIMEType = categorizeFile(path);
             String response = "HTTP/1.1 200 OK" + this.CRLF +
                     "Content-Type: " + MIMEType + this.CRLF +
-                    "Content-Length: " + fileSize + this.CRLF +
+                    "Content-Length: " + f.length() + this.CRLF +
                     "Date: " + date + " GMT" + this.CRLF +
                     "Last-Modified: " + formatter.format(f.lastModified()) + " GMT" + this.CRLF +
                     "Connection: close" + this.CRLF +
@@ -305,7 +345,20 @@ public class ThreadedHTTPWorker extends Thread {
             // System.out.println(response);
             this.outputStream.writeBytes(response);
             System.out.println("Response header sent ... ");
-            sendFileNormal(f);
+            int bytes = 0;
+
+            // Open the File
+            FileInputStream fileInputStream = new FileInputStream(f);
+
+            // Here we break file into chunks
+            byte[] buffer = new byte[1024];
+            while ((bytes = fileInputStream.read(buffer)) != -1) {
+                // Send the file
+                this.outputStream.write(buffer, 0, bytes); // file content
+                this.outputStream.flush(); // flush all the contents into stream
+            }
+            // close the file here
+            fileInputStream.close();
 
         } catch (IOException e) {
             e.printStackTrace();
