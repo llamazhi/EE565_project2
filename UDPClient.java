@@ -44,6 +44,7 @@ public class UDPClient {
 
     public void startClient(String path, RemoteServerInfo info) {
         try (DatagramSocket socket = new DatagramSocket(0)) {
+            this.requestFilename = path;
             receivedChunks = new HashMap<>();
 
             // send request packet
