@@ -5,6 +5,8 @@ public class ThreadedUDPServerClient extends Thread {
     private UDPServer udpserver;
     private UDPClient udpclient;
     private String requestFilename;
+    private int remoteServerPort;
+    private String remoteServerHostname;
 
     public ThreadedUDPServerClient(int serverPort) {
         this.udpserver = new UDPServer(serverPort, true);
@@ -44,6 +46,8 @@ public class ThreadedUDPServerClient extends Thread {
             // CLIENT mode
             this.udpclient.activate();
             this.udpclient.setRequestFilename(this.requestFilename);
+            this.udpclient.setRemoteServerHostname(this.remoteServerHostname);
+            this.udpclient.setRemoteServerPort(this.remoteServerPort);
             this.udpclient.startClient();
             this.udpclient.deactivate();
             this.mode = "SERVER";
