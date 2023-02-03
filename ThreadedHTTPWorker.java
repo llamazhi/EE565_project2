@@ -7,9 +7,11 @@ import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Map;
 
 // ThreadedHTTPWorker class is responsible for all the
 // actual string & data transfer
@@ -18,7 +20,7 @@ public class ThreadedHTTPWorker extends Thread {
     private DataInputStream inputStream = null;
     private DataOutputStream outputStream = null;
     private final String CRLF = "\r\n";
-    private HashMap<String, String> parameterMap;
+    private HashMap<String, ArrayList<RemoteServerInfo>> parameterMap;
 
     public ThreadedHTTPWorker(Socket client) {
         this.client = client;
@@ -97,7 +99,7 @@ public class ThreadedHTTPWorker extends Thread {
         if (!parser.hasUDPRequest()) {
             // This is a local request
             String path = parser.getPath();
-            viewContent(req, path);
+            viewContent(path);
         } else if (parser.hasAdd()) {
             // store the parameter information
             String[] queries = parser.getQueries();
@@ -109,9 +111,9 @@ public class ThreadedHTTPWorker extends Thread {
 
             // assume viewContent would return packetNum
             int count = 0;
-            viewContent(req, path);
+            viewContent(path);
         } else if (parser.hasConfig()) {
-            int rate = Integer.parseInt(this.parameterMap.get("rate"));
+            // int rate = Integer.parseInt(this.parameterMap.get("rate"));
             // configureRate(rate);
         } else if (parser.hasStatus()) {
             String info = getStatus();
@@ -127,16 +129,19 @@ public class ThreadedHTTPWorker extends Thread {
     // store the parameter information
     private void addPeer(String[] queries) {
         try {
+            HashMap<String, String> keyValue = new HashMap<>();
             for (String q : queries) {
                 String[] queryComponents = q.split("=");
-                parameterMap.put(queryComponents[0], queryComponents[1]);
+                keyValue.put(queryComponents[0], queryComponents[1]);
             }
-            System.out.println(parameterMap);
+            System.out.println(keyValue);
 
             // may pass the parameters to UDP later
-            String path = parameterMap.get("path");
-            int portNum = Integer.parseInt(parameterMap.get("port"));
-            String host = parameterMap.get("host");
+            String path = keyValue.get("path");
+            int port = Integer.parseInt(keyValue.get("port"));
+            String host = keyValue.get("host");
+            RemoteServerInfo info = new RemoteServerInfo(host, port);
+            this.parameterMap.get(path).add(info);
 
             // Pass the queries to backend port
             // At this stage, we just print them out
@@ -156,12 +161,8 @@ public class ThreadedHTTPWorker extends Thread {
         // TODO:
         // Add functionality to actually receive content from the server
         UDPClient udpclient = new UDPClient();
-        this.udpserver.setRequestFilename(path);
-        RemoteServerInfo info = this.parameterMap.get(path);
-        this.udpserver.setRemoteServerHostname(info.hostname);
-        this.udpserver.setRemoteServerPort(info.port);
-        this.udpserver.changeMode("CLIENT");
-        long fileSize = this.udpserver.getRequestFileSize();
+        RemoteServerInfo info = this.parameterMap.get(path).get(0); // TODO: get chunks from multiple remote servers
+        udpclient.startClient(path, info);
 
         try {
             String date = getDateInfo();
@@ -169,9 +170,9 @@ public class ThreadedHTTPWorker extends Thread {
             String MIMEType = categorizeFile(path);
             String response = "HTTP/1.1 200 OK" + this.CRLF +
                     "Content-Type: " + MIMEType + this.CRLF +
-                    "Content-Length: " + fileSize + this.CRLF +
+                    "Content-Length: " + udpclient.getRequestFileSize() + this.CRLF +
                     "Date: " + date + " GMT" + this.CRLF +
-                    "Last-Modified: " + formatter.format(f.lastModified()) + " GMT" + this.CRLF +
+                    "Last-Modified: " + formatter.format(udpclient.getRequestFileLastModified()) + " GMT" + this.CRLF +
                     "Connection: close" + this.CRLF +
                     this.CRLF;
             // System.out.println(response);
@@ -179,18 +180,18 @@ public class ThreadedHTTPWorker extends Thread {
             System.out.println("Response header sent ... ");
             int bytes = 0;
 
-            // Open the File
-            FileInputStream fileInputStream = new FileInputStream(f);
+            // get received chunks from udpclient
+            int numChunks = udpclient.getNumChunks();
+            Map<Integer, byte[]> receivedChunks = udpclient.getReceivedChunks();
 
             // Here we break file into chunks
             byte[] buffer = new byte[1024];
-            while ((bytes = fileInputStream.read(buffer)) != -1) {
+            for (int i = 1; i <= numChunks; i++) {
                 // Send the file
-                this.outputStream.write(buffer, 0, bytes); // file content
+                this.outputStream.write(receivedChunks.get(i), 4, 1020); // file content
                 this.outputStream.flush(); // flush all the contents into stream
             }
             // close the file here
-            fileInputStream.close();
 
         } catch (IOException e) {
             e.printStackTrace();

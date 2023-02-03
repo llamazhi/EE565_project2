@@ -14,14 +14,6 @@ public class UDPClient {
     private int remoteServerPort;
     private String remoteServerHostname;
 
-    public void deactivate() {
-        this.isActive = false;
-    }
-
-    public void activate() {
-        this.isActive = true;
-    }
-
     public void setRemoteServerPort(int port) {
         this.remoteServerPort = port;
     }
@@ -42,7 +34,15 @@ public class UDPClient {
         return this.requestFileLastModified;
     }
 
-    public void startClient() {
+    public int getNumChunks() {
+        return this.numChunks;
+    }
+
+    public Map<Integer, byte[]> getReceivedChunks() {
+        return this.receivedChunks;
+    }
+
+    public void startClient(String path, RemoteServerInfo info) {
         try (DatagramSocket socket = new DatagramSocket(0)) {
             receivedChunks = new HashMap<>();
 
