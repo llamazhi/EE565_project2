@@ -98,8 +98,7 @@ public class ThreadedHTTPWorker extends Thread {
         // try {
         if (!parser.hasUDPRequest()) {
             // This is a local request
-            String path = parser.getPath();
-            viewContent(path);
+            sendErrorResponse();
         } else if (parser.hasAdd()) {
             // store the parameter information
             String[] queries = parser.getQueries();
@@ -111,6 +110,8 @@ public class ThreadedHTTPWorker extends Thread {
 
             // assume viewContent would return packetNum
             int count = 0;
+            System.out.println(path);
+
             viewContent(path);
         } else if (parser.hasConfig()) {
             // int rate = Integer.parseInt(this.parameterMap.get("rate"));
@@ -141,8 +142,11 @@ public class ThreadedHTTPWorker extends Thread {
             int port = Integer.parseInt(keyValue.get("port"));
             String host = keyValue.get("host");
             RemoteServerInfo info = new RemoteServerInfo(host, port);
+            if (!this.parameterMap.containsKey(path)) {
+                this.parameterMap.put(path, new ArrayList<RemoteServerInfo>());
+            }
             this.parameterMap.get(path).add(info);
-
+            System.out.println(parameterMap);
             // Pass the queries to backend port
             // At this stage, we just print them out
             String response = "HTTP/1.1 200 OK" + this.CRLF +
@@ -158,8 +162,6 @@ public class ThreadedHTTPWorker extends Thread {
     }
 
     private void viewContent(String path) {
-        // TODO:
-        // Add functionality to actually receive content from the server
         UDPClient udpclient = new UDPClient();
         RemoteServerInfo info = this.parameterMap.get(path).get(0); // TODO: get chunks from multiple remote servers
         udpclient.startClient(path, info);
@@ -178,20 +180,15 @@ public class ThreadedHTTPWorker extends Thread {
             // System.out.println(response);
             this.outputStream.writeBytes(response);
             System.out.println("Response header sent ... ");
-            int bytes = 0;
 
             // get received chunks from udpclient
             int numChunks = udpclient.getNumChunks();
             Map<Integer, byte[]> receivedChunks = udpclient.getReceivedChunks();
-
-            // Here we break file into chunks
-            byte[] buffer = new byte[1024];
             for (int i = 1; i <= numChunks; i++) {
                 // Send the file
                 this.outputStream.write(receivedChunks.get(i), 4, 1020); // file content
                 this.outputStream.flush(); // flush all the contents into stream
             }
-            // close the file here
 
         } catch (IOException e) {
             e.printStackTrace();

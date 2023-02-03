@@ -57,7 +57,7 @@ public class UDPServer extends Thread {
             // request for a file
             audit.info("Client request for file " + requestString);
             fileChunks = new HashMap<>();
-            String path = "content/" + requestString;
+            String path = requestString;
             File requestFile = new File(path);
             if (!requestFile.exists()) {
                 byte[] data = ("FileNotExistsError").getBytes(Charset.forName("US-ASCII"));
