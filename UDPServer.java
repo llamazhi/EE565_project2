@@ -31,7 +31,6 @@ public class UDPServer extends Thread {
             while (true) {
                 try {
                     DatagramPacket inPkt = new DatagramPacket(new byte[bufferSize], bufferSize);
-                    // socket.setSoTimeout(1000); // listening for response for 1000 ms
                     socket.receive(inPkt);
                     handleInPacket(inPkt, socket);
                 } catch (SocketTimeoutException ex) {
@@ -61,6 +60,7 @@ public class UDPServer extends Thread {
                 byte[] data = ("FileNotExistsError").getBytes(Charset.forName("US-ASCII"));
                 DatagramPacket outPkt = new DatagramPacket(data, data.length, inPkt.getAddress(), inPkt.getPort());
                 socket.send(outPkt);
+                return;
             }
 
             long fileSize = requestFile.length();
@@ -87,9 +87,6 @@ public class UDPServer extends Thread {
             fis.close();
 
             // send response packet
-            // DatagramPacket outPkt = new DatagramPacket(data, data.length,
-            // inPkt.getAddress(),
-            // inPkt.getPort());
             DatagramPacket outPkt = new DatagramPacket(data, data.length, inPkt.getAddress(), inPkt.getPort());
             socket.send(outPkt);
             audit.info(numChunks + " chunks in total");
