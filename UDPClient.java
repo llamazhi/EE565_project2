@@ -11,16 +11,6 @@ public class UDPClient {
     private int numChunks;
     private int windowSize;
     private String requestFilename;
-    private int remoteServerPort;
-    private String remoteServerHostname;
-
-    public void setRemoteServerPort(int port) {
-        this.remoteServerPort = port;
-    }
-
-    public void setRemoteServerHostname(String hostname) {
-        this.remoteServerHostname = hostname;
-    }
 
     public void setRequestFilename(String filename) {
         this.requestFilename = filename;
