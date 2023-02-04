@@ -253,7 +253,7 @@ public class ThreadedHTTPWorker extends Thread {
             // String completenessMsg = Double.toString(VodServer.getCompleteness());
             // String bitRateMsg = Integer.toString(VodServer.getBitRate());
             String html = "<html><body><h1>Current status: </h1><p>File Complenteness: " + completenessMsg
-                    + " \r\n Current bit rate: " + bitRateMsg + "</p></body></html>";
+                    + "<br> Current bit rate: " + bitRateMsg + "</p></body></html>";
             String response = "HTTP/1.1 200 OK" + this.CRLF +
                     "Date: " + getDateInfo() + " GMT" + this.CRLF +
                     "Content-Type: text/html" + this.CRLF +
