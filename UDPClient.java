@@ -56,9 +56,6 @@ public class UDPClient {
                 String result = new String(inPkt.getData(), 0, inPkt.getLength(), "US-ASCII").trim();
                 System.out.println("result: " + result);
                 if (result.contains("FileNotExistsError")) {
-                    // TODO: notify http server to send 404 error
-                    System.out.println("hihi: ");
-
                     return;
                 }
                 String[] responseValues = result.split(" ");
