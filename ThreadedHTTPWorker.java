@@ -99,8 +99,7 @@ public class ThreadedHTTPWorker extends Thread {
         // try {
         if (!parser.hasUDPRequest()) {
             // This is a local request
-            String path = parser.getPath();
-            viewContent(path);
+            sendErrorResponse();
         } else if (parser.hasAdd()) {
             // store the parameter information
             String[] queries = parser.getQueries();
@@ -112,6 +111,8 @@ public class ThreadedHTTPWorker extends Thread {
 
             // assume viewContent would return packetNum
             int count = 0;
+            System.out.println(path);
+
             viewContent(path);
         } else if (parser.hasConfig()) {
             if (this.udpClient != null) {
@@ -144,8 +145,7 @@ public class ThreadedHTTPWorker extends Thread {
             int port = Integer.parseInt(keyValue.get("port"));
             String host = keyValue.get("host");
             RemoteServerInfo info = new RemoteServerInfo(host, port);
-            this.parameterMap.get(path).add(info);
-
+            VodServer.addPeer(path, info);
             // Pass the queries to backend port
             // At this stage, we just print them out
             String response = "HTTP/1.1 200 OK" + this.CRLF +
@@ -182,7 +182,6 @@ public class ThreadedHTTPWorker extends Thread {
             // System.out.println(response);
             this.outputStream.writeBytes(response);
             System.out.println("Response header sent ... ");
-            int bytes = 0;
 
             // get received chunks from udpclient
             int numChunks = this.udpClient.getNumChunks();
@@ -195,7 +194,6 @@ public class ThreadedHTTPWorker extends Thread {
                 this.outputStream.write(receivedChunks.get(i), 4, 1020); // file content
                 this.outputStream.flush(); // flush all the contents into stream
             }
-            // close the file here
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -223,13 +221,7 @@ public class ThreadedHTTPWorker extends Thread {
             String response = "HTTP/1.1 404 Not Found" + this.CRLF +
                     this.CRLF;
             this.outputStream.writeBytes(response);
-            String html = """
-                    <html>
-                        <body>
-                            <p>404 Not Found!</p>
-                        </body>
-                    </html>
-                    """;
+            String html = "<html><body><p>404 Not Found!</p></body></html>";
             this.outputStream.writeBytes(html);
         } catch (IOException e) {
             e.printStackTrace();

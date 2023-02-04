@@ -84,17 +84,18 @@ public class UDPClient {
 
     public void startClient(String path, RemoteServerInfo info) {
         try (DatagramSocket socket = new DatagramSocket(0)) {
+            this.requestFilename = path;
             receivedChunks = new HashMap<>();
 
             // send request packet
-            InetAddress host = InetAddress.getByName(this.remoteServerHostname);
+            InetAddress host = InetAddress.getByName(info.hostname);
             byte[] seqNumBytes = new byte[4];
             byte[] requestData = new byte[bufferSize];
             seqNumBytes = ByteBuffer.allocate(4).putInt(0).array();
             System.arraycopy(seqNumBytes, 0, requestData, 0, 4);
             byte[] messageBytes = requestFilename.getBytes();
             System.arraycopy(messageBytes, 0, requestData, 4, messageBytes.length);
-            DatagramPacket outPkt = new DatagramPacket(requestData, requestData.length, host, this.remoteServerPort);
+            DatagramPacket outPkt = new DatagramPacket(requestData, requestData.length, host, info.port);
             DatagramPacket inPkt = new DatagramPacket(new byte[bufferSize], bufferSize);
             socket.send(outPkt);
 
@@ -107,8 +108,8 @@ public class UDPClient {
                     return;
                 }
                 String[] responseValues = result.split(" ");
-                this.requestFileSize = Integer.parseInt(responseValues[0]);
-                this.requestFileLastModified = Integer.parseInt(responseValues[1]);
+                this.requestFileSize = Long.parseLong(responseValues[0]);
+                this.requestFileLastModified = Long.parseLong(responseValues[1]);
                 this.numChunks = Integer.parseInt(responseValues[2]);
                 this.windowSize = Integer.parseInt(responseValues[3]);
                 System.out.println("numChunks: " + numChunks + " windowSize: " + windowSize);
