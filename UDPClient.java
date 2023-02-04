@@ -13,8 +13,10 @@ public class UDPClient {
     private String requestFilename;
     private int remoteServerPort;
     private String remoteServerHostname;
-    private int trafficRate = 8096;
-    private HashMap<Integer, List<Date>> dateMap;
+    private int trafficRate = 1000000;
+    private long sendTime;
+    private long receiveTime;
+    private List<Long> RTT;
 
     public void setRemoteServerPort(int port) {
         this.remoteServerPort = port;
@@ -48,30 +50,20 @@ public class UDPClient {
         return this.receivedChunks;
     }
 
+    // time stamps use unit in milisec
     public int getTrafficRate() {
-        int i = 2; // the first meaningful seqNum
-        if (this.dateMap != null && this.dateMap.size() > 0 && this.dateMap.get(i) != null) {
-            List<Date> sendReceiveTime = this.dateMap.get(i);
-            long sumTime = 0;
-            for (int j = 0; j < this.dateMap.size(); j++) {
-                long sentTime = sendReceiveTime.get(0).getTime();
-                long receivedTime = sendReceiveTime.get(1).getTime();
-                sumTime += receivedTime - sentTime;
-            }
-            // average RTT time for a packet, a packet is set to be 1024 bytes
-            long avgTime = sumTime / this.dateMap.size(); // unit in millisec
-            this.trafficRate = 1 / (int) (avgTime / 1000) * 1024;
-            return this.trafficRate;
-        } else {
-            return this.trafficRate;
+        long sumTime = 0;
+        for (long time : this.RTT) {
+            sumTime += time;
         }
+        long avgTime = sumTime / RTT.size(); // The average RTT for a packet
+        long rate = 1024 / (avgTime / 1000); // 1 Packet = 1024 bytes
+        return (int) rate;
     }
 
     // calculate how many milisecs the socket needs to stop
     // to get configureation rate
-    public int getWaitTime(int rate) {
-        // convert trafficRate to packet / sec
-        int prevTrafficRate = getTrafficRate();
+    public int getWaitTime(int prevTrafficRate, int rate) {
         if (prevTrafficRate > rate) { // unit in byte / sec
             // assume a 1 sec interval
             // prevTraffic rate is greater than the rate by 'coeff' times
@@ -80,6 +72,12 @@ public class UDPClient {
             return waitTime;
         }
         return 0;
+    }
+
+    private void resizeRTTList() {
+        if (this.RTT.size() > 10000) {
+            this.RTT.remove(0);
+        }
     }
 
     public void startClient(String path, RemoteServerInfo info) {
@@ -120,7 +118,6 @@ public class UDPClient {
                 int windowStart = 1;
                 int windowEnd = windowSize;
                 System.out.println("windowStart: " + windowStart + " , windowEnd: " + windowEnd);
-                this.dateMap = new HashMap<>();
 
                 while (windowEnd <= numChunks || numChunks <= windowSize) {
                     if (this.receivedChunks.size() == this.numChunks) {
@@ -135,16 +132,7 @@ public class UDPClient {
                         System.arraycopy(seqNumBytes, 0, requestData, 0, 4);
                         outPkt = new DatagramPacket(requestData, requestData.length, host, info.port);
                         socket.send(outPkt);
-
-                        // configure rate before send request every time
-                        // int waitTime = getWaitTime(this.trafficRate);
-                        // socket.setSoTimeout(waitTime);
-
-                        // record the sent and received time of a packet
-                        // int seqNum = ByteBuffer.wrap(seqNumBytes).getInt();
-                        // List<Date> sendReceiveTime = new ArrayList<Date>();
-                        // sendReceiveTime.add(new Date());
-                        // dateMap.put(seqNum, sendReceiveTime);
+                        this.sendTime = new Date().getTime();
                     }
 
                     System.out.println("This round of packets have been requested");
@@ -157,9 +145,12 @@ public class UDPClient {
                         }
                         socket.receive(inPkt);
 
-                        // List<Date> sendReceiveTime = dateMap.get(i);
-                        // sendReceiveTime.add(new Date());
-                        // dateMap.put(i, sendReceiveTime); // update the map by adding receive time
+                        // control the traffic rate of the socket
+                        this.receiveTime = new Date().getTime();
+                        this.RTT.add(receiveTime - sendTime);
+                        resizeRTTList();
+                        int waitTime = getWaitTime(getTrafficRate(), this.trafficRate);
+                        socket.setSoTimeout(waitTime);
 
                         seqNumBytes = new byte[4];
                         System.arraycopy(inPkt.getData(), 0, seqNumBytes, 0, 4);

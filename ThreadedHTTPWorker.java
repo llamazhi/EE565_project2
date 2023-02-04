@@ -107,18 +107,10 @@ public class ThreadedHTTPWorker extends Thread {
         } else if (parser.hasView()) {
             String path = parser.getPath();
             path = path.replace("peer/view/", "");
-            byte[] buffer = new byte[1024];
-
-            // assume viewContent would return packetNum
-            int count = 0;
-            System.out.println(path);
-
             viewContent(path);
         } else if (parser.hasConfig()) {
-            if (this.udpClient != null) {
-                int rate = parser.getRate();
-                this.udpClient.setTrafficRate(rate);
-            }
+            int rate = parser.getRate();
+            configureRate(rate);
         } else if (parser.hasStatus()) {
             String info = getStatus();
             // this.outputStream.writeBytes(info);
@@ -166,7 +158,7 @@ public class ThreadedHTTPWorker extends Thread {
     }
 
     private void viewContent(String path) {
-        UDPClient udpclient = new UDPClient();
+        this.udpClient = new UDPClient();
 
         ArrayList<RemoteServerInfo> infos = VodServer.getRemoteServerInfo(path); // TODO: get chunks from multiple
                                                                                  // remote servers
@@ -174,7 +166,7 @@ public class ThreadedHTTPWorker extends Thread {
             sendErrorResponse("Please add peer first!");
             return;
         }
-        udpclient.startClient(path, infos.get(0));
+        this.udpClient.startClient(path, infos.get(0));
 
         try {
             String date = getDateInfo();
@@ -182,9 +174,10 @@ public class ThreadedHTTPWorker extends Thread {
             String MIMEType = categorizeFile(path);
             String response = "HTTP/1.1 200 OK" + this.CRLF +
                     "Content-Type: " + MIMEType + this.CRLF +
-                    "Content-Length: " + udpclient.getRequestFileSize() + this.CRLF +
+                    "Content-Length: " + this.udpClient.getRequestFileSize() + this.CRLF +
                     "Date: " + date + " GMT" + this.CRLF +
-                    "Last-Modified: " + formatter.format(udpclient.getRequestFileLastModified()) + " GMT" + this.CRLF +
+                    "Last-Modified: " + formatter.format(this.udpClient.getRequestFileLastModified()) + " GMT"
+                    + this.CRLF +
                     "Connection: close" + this.CRLF +
                     this.CRLF;
             // System.out.println(response);
@@ -192,8 +185,8 @@ public class ThreadedHTTPWorker extends Thread {
             System.out.println("Response header sent ... ");
 
             // get received chunks from udpclient
-            int numChunks = udpclient.getNumChunks();
-            Map<Integer, byte[]> receivedChunks = udpclient.getReceivedChunks();
+            int numChunks = this.udpClient.getNumChunks();
+            Map<Integer, byte[]> receivedChunks = this.udpClient.getReceivedChunks();
             for (int i = 1; i <= numChunks; i++) {
                 // Send the file
                 this.outputStream.write(receivedChunks.get(i), 4, 1020); // file content
@@ -231,6 +224,24 @@ public class ThreadedHTTPWorker extends Thread {
                     this.CRLF + html;
             this.outputStream.writeBytes(response);
             this.outputStream.writeBytes(html);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private void configureRate(int rate) {
+        try {
+            if (this.udpClient != null) {
+                this.udpClient.setTrafficRate(rate);
+            }
+            String html = "<html><body><h1>Tranfer Rate configured as " + rate + " bytes/s</h1></body></html>";
+            String response = "HTTP/1.1 200 OK" + this.CRLF +
+                    "Date: " + getDateInfo() + " GMT" + this.CRLF +
+                    "Content-Type: text/html" + this.CRLF +
+                    "Content-Length:" + html.getBytes().length + this.CRLF +
+                    this.CRLF + html;
+            this.outputStream.writeBytes(response);
         } catch (IOException e) {
             e.printStackTrace();
         }
