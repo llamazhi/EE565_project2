@@ -143,10 +143,16 @@ public class ThreadedHTTPWorker extends Thread {
             VodServer.addPeer(path, info);
             // Pass the queries to backend port
             // At this stage, we just print them out
+            String html = "<html><body><h1>Peer Added!</h1></body></html>";
             String response = "HTTP/1.1 200 OK" + this.CRLF +
                     "Date: " + getDateInfo() + " GMT" + this.CRLF +
+                    "Content-Type: text/html" + this.CRLF +
+                    "Content-Length:" + html.getBytes().length + this.CRLF +
                     "Connection: keep-alive" + this.CRLF +
-                    this.CRLF;
+                    this.CRLF + html;
+            // sprintf(response, "HTTP/1.1 200 OK\nLast-Modified: %s\nConnection:
+            // close\nContent-Type: %s\nAccept-Ranges: bytes\nDate: %s\nContent-Length:
+            // %d\n\n", lastModifiedTimeString, contentType, dateTimeString, file_size);
             this.outputStream.writeBytes(response);
 
         } catch (IOException e) {
