@@ -96,7 +96,7 @@ public class ThreadedHTTPWorker extends Thread {
         // try {
         if (!parser.hasUDPRequest()) {
             // This is a local request
-            sendErrorResponse();
+            sendErrorResponse("Invalid request");
         } else if (parser.hasAdd()) {
             // store the parameter information
             String[] queries = parser.getQueries();
@@ -118,7 +118,7 @@ public class ThreadedHTTPWorker extends Thread {
             String info = getStatus();
             // this.outputStream.writeBytes(info);
         } else {
-            sendErrorResponse();
+            sendErrorResponse("Invalid request");
         }
         // } catch (IOException e) {
         // e.printStackTrace();
@@ -148,7 +148,6 @@ public class ThreadedHTTPWorker extends Thread {
                     "Date: " + getDateInfo() + " GMT" + this.CRLF +
                     "Content-Type: text/html" + this.CRLF +
                     "Content-Length:" + html.getBytes().length + this.CRLF +
-                    "Connection: keep-alive" + this.CRLF +
                     this.CRLF + html;
             // sprintf(response, "HTTP/1.1 200 OK\nLast-Modified: %s\nConnection:
             // close\nContent-Type: %s\nAccept-Ranges: bytes\nDate: %s\nContent-Length:
@@ -163,8 +162,13 @@ public class ThreadedHTTPWorker extends Thread {
 
     private void viewContent(String path) {
         UDPClient udpclient = new UDPClient();
+
         ArrayList<RemoteServerInfo> infos = VodServer.getRemoteServerInfo(path); // TODO: get chunks from multiple
                                                                                  // remote servers
+        if (infos == null) {
+            sendErrorResponse("Please add peer first!");
+            return;
+        }
         udpclient.startClient(path, infos.get(0));
 
         try {
@@ -212,12 +216,15 @@ public class ThreadedHTTPWorker extends Thread {
 
     }
 
-    private void sendErrorResponse() {
+    private void sendErrorResponse(String msg) {
         try {
+            String html = "<html><body><h1>404 Not Found!</h1><p>" + msg + "</p></body></html>";
             String response = "HTTP/1.1 404 Not Found" + this.CRLF +
-                    this.CRLF;
+                    "Date: " + getDateInfo() + " GMT" + this.CRLF +
+                    "Content-Type: text/html" + this.CRLF +
+                    "Content-Length:" + html.getBytes().length + this.CRLF +
+                    this.CRLF + html;
             this.outputStream.writeBytes(response);
-            String html = "<html><body><p>404 Not Found!</p></body></html>";
             this.outputStream.writeBytes(html);
         } catch (IOException e) {
             e.printStackTrace();
