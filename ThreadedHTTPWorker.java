@@ -21,6 +21,7 @@ public class ThreadedHTTPWorker extends Thread {
     private DataOutputStream outputStream = null;
     private final String CRLF = "\r\n";
     private HashMap<String, ArrayList<RemoteServerInfo>> parameterMap;
+    private UDPClient udpClient;
 
     public ThreadedHTTPWorker(Socket client) {
         this.client = client;
@@ -113,8 +114,10 @@ public class ThreadedHTTPWorker extends Thread {
             int count = 0;
             viewContent(path);
         } else if (parser.hasConfig()) {
-            // int rate = Integer.parseInt(this.parameterMap.get("rate"));
-            // configureRate(rate);
+            if (this.udpClient != null) {
+                int rate = parser.getRate();
+                this.udpClient.setTrafficRate(rate);
+            }
         } else if (parser.hasStatus()) {
             String info = getStatus();
             // this.outputStream.writeBytes(info);
@@ -160,9 +163,10 @@ public class ThreadedHTTPWorker extends Thread {
     private void viewContent(String path) {
         // TODO:
         // Add functionality to actually receive content from the server
-        UDPClient udpclient = new UDPClient();
+        // UDPClient udpclient = new UDPClient();
+        this.udpClient = new UDPClient();
         RemoteServerInfo info = this.parameterMap.get(path).get(0); // TODO: get chunks from multiple remote servers
-        udpclient.startClient(path, info);
+        this.udpClient.startClient(path, info);
 
         try {
             String date = getDateInfo();
@@ -170,9 +174,9 @@ public class ThreadedHTTPWorker extends Thread {
             String MIMEType = categorizeFile(path);
             String response = "HTTP/1.1 200 OK" + this.CRLF +
                     "Content-Type: " + MIMEType + this.CRLF +
-                    "Content-Length: " + udpclient.getRequestFileSize() + this.CRLF +
+                    "Content-Length: " + udpClient.getRequestFileSize() + this.CRLF +
                     "Date: " + date + " GMT" + this.CRLF +
-                    "Last-Modified: " + formatter.format(udpclient.getRequestFileLastModified()) + " GMT" + this.CRLF +
+                    "Last-Modified: " + formatter.format(udpClient.getRequestFileLastModified()) + " GMT" + this.CRLF +
                     "Connection: close" + this.CRLF +
                     this.CRLF;
             // System.out.println(response);
@@ -181,8 +185,8 @@ public class ThreadedHTTPWorker extends Thread {
             int bytes = 0;
 
             // get received chunks from udpclient
-            int numChunks = udpclient.getNumChunks();
-            Map<Integer, byte[]> receivedChunks = udpclient.getReceivedChunks();
+            int numChunks = this.udpClient.getNumChunks();
+            Map<Integer, byte[]> receivedChunks = this.udpClient.getReceivedChunks();
 
             // Here we break file into chunks
             byte[] buffer = new byte[1024];
@@ -231,11 +235,6 @@ public class ThreadedHTTPWorker extends Thread {
             e.printStackTrace();
         }
 
-    }
-
-    private void configureRate(int rate) {
-        // TODO:
-        // Add functionality to actually configure the transfer rate
     }
 
     private String getStatus() {

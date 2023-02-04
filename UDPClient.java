@@ -13,6 +13,8 @@ public class UDPClient {
     private String requestFilename;
     private int remoteServerPort;
     private String remoteServerHostname;
+    private int trafficRate = 8096;
+    private HashMap<Integer, List<Date>> dateMap;
 
     public void setRemoteServerPort(int port) {
         this.remoteServerPort = port;
@@ -24,6 +26,10 @@ public class UDPClient {
 
     public void setRequestFilename(String filename) {
         this.requestFilename = filename;
+    }
+
+    public void setTrafficRate(int rate) {
+        this.trafficRate = rate;
     }
 
     public long getRequestFileSize() {
@@ -40,6 +46,40 @@ public class UDPClient {
 
     public Map<Integer, byte[]> getReceivedChunks() {
         return this.receivedChunks;
+    }
+
+    public int getTrafficRate() {
+        int i = 2; // the first meaningful seqNum
+        if (this.dateMap.size() > 0 && this.dateMap.get(i).size() > 1) {
+            List<Date> sendReceiveTime = this.dateMap.get(i);
+            long sumTime = 0;
+            for (int j = 0; j < this.dateMap.size(); j++) {
+                long sentTime = sendReceiveTime.get(0).getTime();
+                long receivedTime = sendReceiveTime.get(1).getTime();
+                sumTime += receivedTime - sentTime;
+            }
+            // average RTT time for a packet, a packet is set to be 1024 bytes
+            long avgTime = sumTime / this.dateMap.size(); // unit in millisec
+            this.trafficRate = 1 / (int) (avgTime / 1000) * 1024;
+            return this.trafficRate;
+        } else {
+            return this.trafficRate;
+        }
+    }
+
+    // calculate how many milisecs the socket needs to stop
+    // to get configureation rate
+    public int getWaitTime(int rate) {
+        // convert trafficRate to packet / sec
+        int prevTrafficRate = getTrafficRate();
+        if (prevTrafficRate > rate) { // unit in byte / sec
+            // assume a 1 sec interval
+            // prevTraffic rate is greater than the rate by 'coeff' times
+            double coeff = prevTrafficRate / rate;
+            int waitTime = (int) ((coeff - 1) * 1000);
+            return waitTime;
+        }
+        return 0;
     }
 
     public void startClient(String path, RemoteServerInfo info) {
@@ -79,6 +119,8 @@ public class UDPClient {
                 int windowStart = 1;
                 int windowEnd = windowSize;
                 System.out.println("windowStart: " + windowStart + " , windowEnd: " + windowEnd);
+                this.dateMap = new HashMap<>();
+
                 while (windowEnd <= numChunks || numChunks <= windowSize) {
                     System.out.println("Current windowEnd: " + windowEnd);
 
@@ -89,6 +131,16 @@ public class UDPClient {
                         System.arraycopy(seqNumBytes, 0, requestData, 0, 4);
                         outPkt = new DatagramPacket(requestData, requestData.length, host, 8080);
                         socket.send(outPkt);
+
+                        // configure rate before send request every time
+                        int waitTime = getWaitTime(this.trafficRate);
+                        socket.setSoTimeout(waitTime);
+
+                        // record the sent and received time of a packet
+                        int seqNum = ByteBuffer.wrap(seqNumBytes).getInt();
+                        List<Date> sendReceiveTime = new ArrayList<Date>();
+                        sendReceiveTime.add(new Date());
+                        dateMap.put(seqNum, sendReceiveTime);
                     }
 
                     System.out.println("This round of packets have been requested");
@@ -96,6 +148,10 @@ public class UDPClient {
                     // attempt to receive packet within the window
                     for (int i = windowStart; i <= windowEnd; i++) {
                         socket.receive(inPkt);
+                        List<Date> sendReceiveTime = dateMap.get(i);
+                        sendReceiveTime.add(new Date());
+                        dateMap.put(i, sendReceiveTime); // update the map by adding receive time
+
                         seqNumBytes = new byte[4];
                         System.arraycopy(inPkt.getData(), 0, seqNumBytes, 0, 4);
                         int seqNum = ByteBuffer.wrap(seqNumBytes).getInt();

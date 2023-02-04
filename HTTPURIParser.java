@@ -23,6 +23,11 @@ public class HTTPURIParser {
         return this.uriObj.getQuery().split("&");
     }
 
+    public int getRate() {
+        String[] rateComponent = this.uriObj.getQuery().split("=");
+        return Integer.parseInt(rateComponent[1]);
+    }
+
     public boolean hasUDPRequest() {
         return (this.hasAdd() || this.hasView() || this.hasConfig() || this.hasStatus());
     }
