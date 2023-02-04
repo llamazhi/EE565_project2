@@ -70,48 +70,65 @@ public class UDPClient {
                 int windowStart = 1;
                 int windowEnd = windowSize;
                 System.out.println("windowStart: " + windowStart + " , windowEnd: " + windowEnd);
-                while (windowEnd <= numChunks || numChunks <= windowSize) {
-                    System.out.println("Current windowEnd: " + windowEnd);
+                // send request for each chunk
+                for (int i = 1; i <= numChunks; i++) {
+                    // requestData = new byte[bufferSize];
+                    byte[] seqnumBytes = ByteBuffer.allocate(4).putInt(i).array();
+                    System.arraycopy(seqnumBytes, 0, requestData, 0, 4);
+                    outPkt = new DatagramPacket(requestData, requestData.length, host, info.port);
+                    socket.send(outPkt);
+                }
 
-                    // send request for each chunk within the window
-                    for (int i = windowStart; i <= windowEnd; i++) {
-                        // requestData = new byte[bufferSize];
-                        seqNumBytes = ByteBuffer.allocate(4).putInt(i).array();
-                        System.arraycopy(seqNumBytes, 0, requestData, 0, 4);
-                        outPkt = new DatagramPacket(requestData, requestData.length, host, 8080);
-                        socket.send(outPkt);
-                    }
-
-                    System.out.println("This round of packets have been requested");
-
-                    // attempt to receive packet within the window
-                    for (int i = windowStart; i <= windowEnd; i++) {
-                        socket.receive(inPkt);
-                        seqNumBytes = new byte[4];
-                        System.arraycopy(inPkt.getData(), 0, seqNumBytes, 0, 4);
-                        int seqNum = ByteBuffer.wrap(seqNumBytes).getInt();
-
-                        // move to the next iteration if the current chunk has been received
-                        // else receive the packet
-                        if (receivedChunks.containsKey(seqNum)) {
-                            continue;
-                        } else {
-                            byte[] chunk = new byte[bufferSize];
-                            System.arraycopy(inPkt.getData(), 0, chunk, 0, bufferSize);
-                            receivedChunks.put(seqNum, chunk);
-                        }
-                    }
-
-                    // move the window by 1 packet if the leftmost packet has been received
-                    while (receivedChunks.containsKey(windowStart)) {
-                        System.out.println("Receive the leftmost packet, time to slide window");
-                        windowStart += 1;
-                        windowEnd = windowStart + windowSize - 1;
-                    }
-
+                while (receivedChunks.size() < numChunks) {
                     System.out.printf("%.2f", 100.0 * receivedChunks.size() / numChunks);
                     System.out.println(" % complete");
+                    int retries = 3;
+                    while (retries > 0) {
+                        try {
+                            socket.setSoTimeout(1000); // wait for response for 3 seconds
+                            socket.receive(inPkt);
+                            byte[] seqnumBytes = new byte[4];
+                            System.arraycopy(inPkt.getData(), 0, seqnumBytes, 0, 4);
+                            int seqnum = ByteBuffer.wrap(seqnumBytes).getInt();
+                            if (receivedChunks.containsKey(seqnum)) {
+                                break;
+                            }
+                            byte[] chunk = new byte[bufferSize];
+                            System.arraycopy(inPkt.getData(), 0, chunk, 0, bufferSize);
+                            receivedChunks.put(seqnum, chunk);
+                            retries = 0; // break out of loop
+                            // result = new String(inPkt.getData(), 4, inPkt.getLength() - 4, "US-ASCII");
+                            // System.out.println("No. " + seqnum + " received");
+                            // System.out.println(result);
+                        } catch (SocketTimeoutException ex) {
+                            retries--;
+                            if (retries == 0) {
+                                System.out.println(
+                                        "Error: Could not receive response from server after multiple retries for some numbers");
+                                break;
+                            } else {
+                                System.out.println(
+                                        "Retransmitting requests for un-received numbers... Retries remaining: "
+                                                + retries);
+
+                                // resend requests for numbers that haven't been received
+                                for (int i = 1; i <= numChunks; i++) {
+                                    if (!receivedChunks.containsKey(i)) {
+                                        requestData = new byte[bufferSize];
+                                        byte[] seqnumBytes = ByteBuffer.allocate(4).putInt(i).array();
+                                        System.arraycopy(seqnumBytes, 0, requestData, 0, 4);
+                                        outPkt = new DatagramPacket(requestData, requestData.length, host,
+                                                info.port);
+                                        socket.send(outPkt);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
+
+                System.out.printf("%.2f", 100.0 * receivedChunks.size() / numChunks);
+                System.out.println(" % complete");
 
             } catch (SocketTimeoutException ex) {
                 socket.close();
