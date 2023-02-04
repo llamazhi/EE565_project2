@@ -56,26 +56,31 @@ public class UDPClient {
         for (long time : this.RTT) {
             sumTime += time;
         }
-        long avgTime = sumTime / RTT.size(); // The average RTT for a packet
-        long rate = 1024 / (avgTime / 1000); // 1 Packet = 1024 bytes
+        long avgTime = sumTime / this.RTT.size(); // The average RTT for a packet
+        // System.out.println("Average RTT: " + avgTime + " milisec");
+        long rate = 1024 / avgTime; // 1 Packet = 1024 bytes, unit in bytes/milisec
+        // System.out.println("Current transfer rate: " + rate + " bytes/milisec");
         return (int) rate;
     }
 
     // calculate how many milisecs the socket needs to stop
     // to get configureation rate
     public int getWaitTime(int prevTrafficRate, int rate) {
-        if (prevTrafficRate > rate) { // unit in byte / sec
+        prevTrafficRate *= 1000; // convert bytes/milisec to bytes/sec
+        if (prevTrafficRate > rate) { // unit in bytes
+            System.out.println("Previous transfer rate: " + prevTrafficRate + " bytes/sec");
+            System.out.println("Current transfer rate: " + rate + " bytes/sec");
             // assume a 1 sec interval
             // prevTraffic rate is greater than the rate by 'coeff' times
             double coeff = prevTrafficRate / rate;
-            int waitTime = (int) ((coeff - 1) * 1000);
+            int waitTime = (int) (coeff - 1);
             return waitTime;
         }
         return 0;
     }
 
     private void resizeRTTList() {
-        if (this.RTT.size() > 10000) {
+        if (this.RTT.size() > 1000) {
             this.RTT.remove(0);
         }
     }
@@ -95,6 +100,7 @@ public class UDPClient {
             System.arraycopy(messageBytes, 0, requestData, 4, messageBytes.length);
             DatagramPacket outPkt = new DatagramPacket(requestData, requestData.length, host, info.port);
             DatagramPacket inPkt = new DatagramPacket(new byte[bufferSize], bufferSize);
+            this.RTT = new ArrayList<Long>();
             socket.send(outPkt);
 
             try {
@@ -151,6 +157,8 @@ public class UDPClient {
                         resizeRTTList();
                         int waitTime = getWaitTime(getTrafficRate(), this.trafficRate);
                         socket.setSoTimeout(waitTime);
+
+                        System.out.println("Socket has been set to wait for " + waitTime + " miliseconds");
 
                         seqNumBytes = new byte[4];
                         System.arraycopy(inPkt.getData(), 0, seqNumBytes, 0, 4);
