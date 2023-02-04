@@ -154,7 +154,8 @@ public class ThreadedHTTPWorker extends Thread {
             // %d\n\n", lastModifiedTimeString, contentType, dateTimeString, file_size);
             this.outputStream.writeBytes(response);
 
-        } catch (IOException e) {
+        } catch (NumberFormatException | IOException e) {
+            sendErrorResponse("invalid query");
             e.printStackTrace();
         }
 
@@ -170,6 +171,9 @@ public class ThreadedHTTPWorker extends Thread {
             return;
         }
         udpclient.startClient(path, infos.get(0));
+        if (udpclient.getReceivedChunks().size() == 0) {
+            sendErrorResponse("File not found!");
+        }
 
         try {
             String date = getDateInfo();

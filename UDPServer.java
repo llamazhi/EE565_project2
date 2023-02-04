@@ -61,6 +61,7 @@ public class UDPServer extends Thread {
                 byte[] data = ("FileNotExistsError").getBytes(Charset.forName("US-ASCII"));
                 DatagramPacket outPkt = new DatagramPacket(data, data.length, inPkt.getAddress(), inPkt.getPort());
                 socket.send(outPkt);
+                return;
             }
 
             long fileSize = requestFile.length();

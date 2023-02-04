@@ -51,10 +51,14 @@ public class UDPClient {
 
             try {
                 // wait for first packet, and then process the packet...
+                socket.setSoTimeout(1000); // wait for response for 1 seconds
                 socket.receive(inPkt);
                 String result = new String(inPkt.getData(), 0, inPkt.getLength(), "US-ASCII").trim();
-                if (result.equals("FileNotExistsError")) {
+                System.out.println("result: " + result);
+                if (result.contains("FileNotExistsError")) {
                     // TODO: notify http server to send 404 error
+                    System.out.println("hihi: ");
+
                     return;
                 }
                 String[] responseValues = result.split(" ");
@@ -85,7 +89,7 @@ public class UDPClient {
                     int retries = 3;
                     while (retries > 0) {
                         try {
-                            socket.setSoTimeout(1000); // wait for response for 3 seconds
+                            socket.setSoTimeout(1000); // wait for response for 1 seconds
                             socket.receive(inPkt);
                             byte[] seqnumBytes = new byte[4];
                             System.arraycopy(inPkt.getData(), 0, seqnumBytes, 0, 4);
@@ -133,13 +137,11 @@ public class UDPClient {
             } catch (SocketTimeoutException ex) {
                 socket.close();
                 System.err.println("No connection within 1 seconds");
-            } finally {
-                System.out.printf("%.2f", 100.0 * receivedChunks.size() / numChunks);
-                System.out.println(" % complete");
-                System.out.println("FROM SERVER: " + receivedChunks.size() + " packets");
-                System.out.println("Received bytes written to file: received_" + requestFilename);
-                // this.mode = "SERVER";
             }
+
+            System.out.printf("%.2f", 100.0 * receivedChunks.size() / numChunks);
+            System.out.println(" % complete");
+            System.out.println("FROM SERVER: " + receivedChunks.size() + " packets");
         } catch (IOException ex) {
             ex.printStackTrace();
         }
