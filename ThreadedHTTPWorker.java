@@ -115,7 +115,7 @@ public class ThreadedHTTPWorker extends Thread {
             // int rate = Integer.parseInt(this.parameterMap.get("rate"));
             // configureRate(rate);
         } else if (parser.hasStatus()) {
-            String info = getStatus();
+            getStatus();
             // this.outputStream.writeBytes(info);
         } else {
             sendErrorResponse("Invalid request");
@@ -241,10 +241,28 @@ public class ThreadedHTTPWorker extends Thread {
         // Add functionality to actually configure the transfer rate
     }
 
-    private String getStatus() {
-        // TODO:
-        // Add functionality to actually show the status
-        return "";
+    private void getStatus() {
+        try {
+            // TODO: Get completeness and bitRate from UDP server
+            double completeness = 0.345;
+            int bitRate = 8196;
+
+            String completenessMsg = Double.toString((completeness * 100)) + " %";
+            String bitRateMsg = Integer.toString(bitRate) + " bytes/s";
+            // VodServer.setStatusParams(completeness, bitRate);
+            // String completenessMsg = Double.toString(VodServer.getCompleteness());
+            // String bitRateMsg = Integer.toString(VodServer.getBitRate());
+            String html = "<html><body><h1>Current status: </h1><p>File Complenteness: " + completenessMsg
+                    + " \r\n Current bit rate: " + bitRateMsg + "</p></body></html>";
+            String response = "HTTP/1.1 200 OK" + this.CRLF +
+                    "Date: " + getDateInfo() + " GMT" + this.CRLF +
+                    "Content-Type: text/html" + this.CRLF +
+                    "Content-Length:" + html.getBytes().length + this.CRLF +
+                    this.CRLF + html;
+            this.outputStream.writeBytes(response);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private boolean isRangeRequest(String req) {

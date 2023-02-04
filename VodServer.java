@@ -6,12 +6,27 @@ import java.util.HashMap;
 // This is the main driver class for the project
 public class VodServer {
     private static HashMap<String, ArrayList<RemoteServerInfo>> parameterMap;
+    private static Double completeness;
+    private static Integer bitRate;
 
     public static void addPeer(String filepath, RemoteServerInfo info) {
         if (!VodServer.parameterMap.containsKey(filepath)) {
             VodServer.parameterMap.put(filepath, new ArrayList<RemoteServerInfo>());
         }
         VodServer.parameterMap.get(filepath).add(info);
+    }
+
+    public static void setStatusParams(double completeness, int bitRate) {
+        VodServer.completeness = completeness;
+        VodServer.bitRate = bitRate;
+    }
+
+    public static double getCompleteness() {
+        return VodServer.completeness;
+    }
+
+    public static int getBitRate() {
+        return VodServer.bitRate;
     }
 
     public static ArrayList<RemoteServerInfo> getRemoteServerInfo(String filepath) {
