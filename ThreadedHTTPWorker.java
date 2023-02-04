@@ -20,11 +20,9 @@ public class ThreadedHTTPWorker extends Thread {
     private DataInputStream inputStream = null;
     private DataOutputStream outputStream = null;
     private final String CRLF = "\r\n";
-    private HashMap<String, ArrayList<RemoteServerInfo>> parameterMap;
 
     public ThreadedHTTPWorker(Socket client) {
         this.client = client;
-        this.parameterMap = new HashMap<>();
     }
 
     @Override

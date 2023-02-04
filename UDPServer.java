@@ -11,8 +11,6 @@ public class UDPServer extends Thread {
     private final static Logger errors = Logger.getLogger("errors");
 
     private int port;
-
-    private String requestFilename;
     private static int numChunks;
     private final static int bufferSize = 1024;
     private static Map<Integer, byte[]> fileChunks = new HashMap<>();
