@@ -68,8 +68,8 @@ public class UDPClient {
                     return;
                 }
                 String[] responseValues = result.split(" ");
-                this.requestFileSize = Integer.parseInt(responseValues[0]);
-                this.requestFileLastModified = Integer.parseInt(responseValues[1]);
+                this.requestFileSize = Long.parseLong(responseValues[0]);
+                this.requestFileLastModified = Long.parseLong(responseValues[1]);
                 this.numChunks = Integer.parseInt(responseValues[2]);
                 this.windowSize = Integer.parseInt(responseValues[3]);
                 System.out.println("numChunks: " + numChunks + " windowSize: " + windowSize);
