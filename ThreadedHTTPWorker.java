@@ -99,7 +99,7 @@ public class ThreadedHTTPWorker extends Thread {
         // try {
         if (!parser.hasUDPRequest()) {
             // This is a local request
-            sendErrorResponse();
+            sendErrorResponse("");
         } else if (parser.hasAdd()) {
             // store the parameter information
             String[] queries = parser.getQueries();
@@ -123,7 +123,7 @@ public class ThreadedHTTPWorker extends Thread {
             String info = getStatus();
             // this.outputStream.writeBytes(info);
         } else {
-            sendErrorResponse();
+            sendErrorResponse("");
         }
         // } catch (IOException e) {
         // e.printStackTrace();
@@ -148,10 +148,15 @@ public class ThreadedHTTPWorker extends Thread {
             VodServer.addPeer(path, info);
             // Pass the queries to backend port
             // At this stage, we just print them out
+            String html = "<html><body><h1>Peer Added!</h1></body></html>";
             String response = "HTTP/1.1 200 OK" + this.CRLF +
                     "Date: " + getDateInfo() + " GMT" + this.CRLF +
-                    "Connection: keep-alive" + this.CRLF +
-                    this.CRLF;
+                    "Content-Type: text/html" + this.CRLF +
+                    "Content-Length:" + html.getBytes().length + this.CRLF +
+                    this.CRLF + html;
+            // sprintf(response, "HTTP/1.1 200 OK\nLast-Modified: %s\nConnection:
+            // close\nContent-Type: %s\nAccept-Ranges: bytes\nDate: %s\nContent-Length:
+            // %d\n\n", lastModifiedTimeString, contentType, dateTimeString, file_size);
             this.outputStream.writeBytes(response);
 
         } catch (IOException e) {
@@ -161,12 +166,15 @@ public class ThreadedHTTPWorker extends Thread {
     }
 
     private void viewContent(String path) {
-        // TODO:
-        // Add functionality to actually receive content from the server
-        // UDPClient udpclient = new UDPClient();
-        this.udpClient = new UDPClient();
-        RemoteServerInfo info = this.parameterMap.get(path).get(0); // TODO: get chunks from multiple remote servers
-        this.udpClient.startClient(path, info);
+        UDPClient udpclient = new UDPClient();
+
+        ArrayList<RemoteServerInfo> infos = VodServer.getRemoteServerInfo(path); // TODO: get chunks from multiple
+                                                                                 // remote servers
+        if (infos == null) {
+            sendErrorResponse("Please add peer first!");
+            return;
+        }
+        udpclient.startClient(path, infos.get(0));
 
         try {
             String date = getDateInfo();
@@ -174,9 +182,9 @@ public class ThreadedHTTPWorker extends Thread {
             String MIMEType = categorizeFile(path);
             String response = "HTTP/1.1 200 OK" + this.CRLF +
                     "Content-Type: " + MIMEType + this.CRLF +
-                    "Content-Length: " + udpClient.getRequestFileSize() + this.CRLF +
+                    "Content-Length: " + udpclient.getRequestFileSize() + this.CRLF +
                     "Date: " + date + " GMT" + this.CRLF +
-                    "Last-Modified: " + formatter.format(udpClient.getRequestFileLastModified()) + " GMT" + this.CRLF +
+                    "Last-Modified: " + formatter.format(udpclient.getRequestFileLastModified()) + " GMT" + this.CRLF +
                     "Connection: close" + this.CRLF +
                     this.CRLF;
             // System.out.println(response);
@@ -184,11 +192,8 @@ public class ThreadedHTTPWorker extends Thread {
             System.out.println("Response header sent ... ");
 
             // get received chunks from udpclient
-            int numChunks = this.udpClient.getNumChunks();
-            Map<Integer, byte[]> receivedChunks = this.udpClient.getReceivedChunks();
-
-            // Here we break file into chunks
-            byte[] buffer = new byte[1024];
+            int numChunks = udpclient.getNumChunks();
+            Map<Integer, byte[]> receivedChunks = udpclient.getReceivedChunks();
             for (int i = 1; i <= numChunks; i++) {
                 // Send the file
                 this.outputStream.write(receivedChunks.get(i), 4, 1020); // file content
@@ -216,12 +221,15 @@ public class ThreadedHTTPWorker extends Thread {
 
     }
 
-    private void sendErrorResponse() {
+    private void sendErrorResponse(String msg) {
         try {
+            String html = "<html><body><h1>404 Not Found!</h1><p>" + msg + "</p></body></html>";
             String response = "HTTP/1.1 404 Not Found" + this.CRLF +
-                    this.CRLF;
+                    "Date: " + getDateInfo() + " GMT" + this.CRLF +
+                    "Content-Type: text/html" + this.CRLF +
+                    "Content-Length:" + html.getBytes().length + this.CRLF +
+                    this.CRLF + html;
             this.outputStream.writeBytes(response);
-            String html = "<html><body><p>404 Not Found!</p></body></html>";
             this.outputStream.writeBytes(html);
         } catch (IOException e) {
             e.printStackTrace();

@@ -50,7 +50,7 @@ public class UDPClient {
 
     public int getTrafficRate() {
         int i = 2; // the first meaningful seqNum
-        if (this.dateMap.size() > 0 && this.dateMap.get(i).size() > 1) {
+        if (this.dateMap != null && this.dateMap.size() > 0 && this.dateMap.get(i) != null) {
             List<Date> sendReceiveTime = this.dateMap.get(i);
             long sumTime = 0;
             for (int j = 0; j < this.dateMap.size(); j++) {
@@ -123,6 +123,9 @@ public class UDPClient {
                 this.dateMap = new HashMap<>();
 
                 while (windowEnd <= numChunks || numChunks <= windowSize) {
+                    if (this.receivedChunks.size() == this.numChunks) {
+                        break;
+                    }
                     System.out.println("Current windowEnd: " + windowEnd);
 
                     // send request for each chunk within the window
@@ -130,28 +133,33 @@ public class UDPClient {
                         // requestData = new byte[bufferSize];
                         seqNumBytes = ByteBuffer.allocate(4).putInt(i).array();
                         System.arraycopy(seqNumBytes, 0, requestData, 0, 4);
-                        outPkt = new DatagramPacket(requestData, requestData.length, host, 8080);
+                        outPkt = new DatagramPacket(requestData, requestData.length, host, info.port);
                         socket.send(outPkt);
 
                         // configure rate before send request every time
-                        int waitTime = getWaitTime(this.trafficRate);
-                        socket.setSoTimeout(waitTime);
+                        // int waitTime = getWaitTime(this.trafficRate);
+                        // socket.setSoTimeout(waitTime);
 
                         // record the sent and received time of a packet
-                        int seqNum = ByteBuffer.wrap(seqNumBytes).getInt();
-                        List<Date> sendReceiveTime = new ArrayList<Date>();
-                        sendReceiveTime.add(new Date());
-                        dateMap.put(seqNum, sendReceiveTime);
+                        // int seqNum = ByteBuffer.wrap(seqNumBytes).getInt();
+                        // List<Date> sendReceiveTime = new ArrayList<Date>();
+                        // sendReceiveTime.add(new Date());
+                        // dateMap.put(seqNum, sendReceiveTime);
                     }
 
                     System.out.println("This round of packets have been requested");
 
                     // attempt to receive packet within the window
                     for (int i = windowStart; i <= windowEnd; i++) {
+                        // System.out.println("Test if pre-receive works: " + i);
+                        if (this.receivedChunks.size() == this.numChunks) {
+                            break;
+                        }
                         socket.receive(inPkt);
-                        List<Date> sendReceiveTime = dateMap.get(i);
-                        sendReceiveTime.add(new Date());
-                        dateMap.put(i, sendReceiveTime); // update the map by adding receive time
+
+                        // List<Date> sendReceiveTime = dateMap.get(i);
+                        // sendReceiveTime.add(new Date());
+                        // dateMap.put(i, sendReceiveTime); // update the map by adding receive time
 
                         seqNumBytes = new byte[4];
                         System.arraycopy(inPkt.getData(), 0, seqNumBytes, 0, 4);
@@ -168,8 +176,10 @@ public class UDPClient {
                         }
                     }
 
+                    System.out.println("This round of packets have been received");
+
                     // move the window by 1 packet if the leftmost packet has been received
-                    while (receivedChunks.containsKey(windowStart)) {
+                    if (receivedChunks.containsKey(windowStart)) {
                         System.out.println("Receive the leftmost packet, time to slide window");
                         windowStart += 1;
                         windowEnd = windowStart + windowSize - 1;
