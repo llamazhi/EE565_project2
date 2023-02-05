@@ -5,7 +5,7 @@ import java.util.HashMap;
 
 // This is the main driver class for the project
 public class VodServer {
-    private static HashMap<String, ArrayList<RemoteServerInfo>> parameterMap;
+    public static HashMap<String, ArrayList<RemoteServerInfo>> parameterMap;
     private static Double completeness = 0.0;
     private static Double CurrentBitsPerSecond = 0.0;
     private static Integer bitRate = 0;
