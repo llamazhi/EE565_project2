@@ -173,6 +173,7 @@ public class UDPClient {
                     windowStart = windowEnd + 1;
                     windowEnd = Math.min(windowStart + windowSize - 1, numChunks);
                     VodServer.setCompleteness(100.0 * seen.size() / numChunks);
+                    VodServer.setCurrentBitsPerSecond(currentBitsPerSecond);
                     System.out.printf("%.2f", 100.0 * seen.size() / numChunks);
                     System.out.println(" % complete");
                 }

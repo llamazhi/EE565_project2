@@ -205,13 +205,10 @@ public class ThreadedHTTPWorker extends Thread {
         try {
             // TODO: Get completeness and bitRate from UDP server
             double completeness = VodServer.getCompleteness();
-            int bitRate = VodServer.getBitRate();
+            double bitRate = VodServer.getCurrentBitsPerSecond();
 
             String completenessMsg = Double.toString(completeness) + " %";
-            String bitRateMsg = Integer.toString(bitRate) + " bits/s";
-            // VodServer.setStatusParams(completeness, bitRate);
-            // String completenessMsg = Double.toString(VodServer.getCompleteness());
-            // String bitRateMsg = Integer.toString(VodServer.getBitRate());
+            String bitRateMsg = Double.toString(bitRate) + " bits/s";
             String html = "<html><body><h1>Current status: </h1><p>File Complenteness: " + completenessMsg
                     + "<br> Current bit rate: " + bitRateMsg + "</p></body></html>";
             String response = "HTTP/1.1 200 OK" + this.CRLF +
