@@ -6,7 +6,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -20,6 +19,8 @@ public class ThreadedHTTPWorker extends Thread {
     private DataInputStream inputStream = null;
     private DataOutputStream outputStream = null;
     private final String CRLF = "\r\n";
+    private boolean isRangeRequest = false;
+    private int[] rangeNum;
 
     public ThreadedHTTPWorker(Socket client) {
         this.client = client;
@@ -79,24 +80,36 @@ public class ThreadedHTTPWorker extends Thread {
         // System.out.println(req);
         String[] reqComponents = req.split("\r\n");
         System.out.println("first line: " + reqComponents[0]);
-
         String relativeURL = reqComponents[0];
         relativeURL = relativeURL.replace("GET /", "").replace(" HTTP/1.1", "");
 
+        if (isRangeRequest(req)) {
+            this.isRangeRequest = true;
+            setRange(req);
+        } else {
+            this.isRangeRequest = false;
+        }
         System.out.println("relativeURL: " + "\"" + relativeURL + "\"");
         return relativeURL;
     }
 
     private void parseURI(String req, String relativeURL) {
         HTTPURIParser parser = new HTTPURIParser(relativeURL);
-
-        // This is just a start page to show that server has started
-        // TODO:
-        // Add functionality so that only valid URIs can be recognized
-        // try {
         if (!parser.hasUDPRequest()) {
             // This is a local request
-            sendErrorResponse("Invalid request");
+            String path = parser.getPath();
+            System.out.println("path: " + path);
+            String MIMEType = categorizeFile(path);
+            File f = new File(path);
+            if (f.exists()) {
+                if (this.isRangeRequest) {
+                    sendPartialContent(MIMEType, this.rangeNum, f);
+                } else {
+                    sendFullContent(MIMEType, f);
+                }
+            } else {
+                sendErrorResponse("This file is not found in local server.");
+            }
         } else if (parser.hasAdd()) {
             // store the parameter information
             String[] queries = parser.getQueries();
@@ -104,12 +117,6 @@ public class ThreadedHTTPWorker extends Thread {
         } else if (parser.hasView()) {
             String path = parser.getPath();
             path = path.replace("peer/view/", "");
-            byte[] buffer = new byte[1024];
-
-            // assume viewContent would return packetNum
-            int count = 0;
-            System.out.println(path);
-
             viewContent(path);
         } else if (parser.hasConfig()) {
             // int rate = Integer.parseInt(this.parameterMap.get("rate"));
@@ -120,9 +127,6 @@ public class ThreadedHTTPWorker extends Thread {
         } else {
             sendErrorResponse("Invalid request");
         }
-        // } catch (IOException e) {
-        // e.printStackTrace();
-        // }
     }
 
     // store the parameter information
@@ -204,22 +208,6 @@ public class ThreadedHTTPWorker extends Thread {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        // System.out.println("viewPath: " + path);
-        // File f = new File(path);
-        // if (f.exists()) {
-        // String fileType = categorizeFile(path);
-        // long fileSize = f.length();
-        // if (isRangeRequest(req)) {
-        // int[] rangeNum = getRange(req);
-        // sendPartialContent(fileType, rangeNum[0], rangeNum[1], f, fileSize);
-        // } else {
-        // sendFullContent(path);
-        // }
-        // } else {
-        // sendErrorResponse();
-        // }
-
     }
 
     private void sendErrorResponse(String msg) {
@@ -272,11 +260,11 @@ public class ThreadedHTTPWorker extends Thread {
     }
 
     // extract range from request
-    private int[] getRange(String req) {
+    private void setRange(String req) {
         String[] lines = req.split("\r\n");
         int start = 0;
         int end = 0;
-        int[] rangeNum = new int[] { 0, 0 };
+        this.rangeNum = new int[] { 0, 0 };
         for (String l : lines) {
             // check if the line contains "Range: " field
             if (l.contains("Range: bytes=")) {
@@ -286,11 +274,10 @@ public class ThreadedHTTPWorker extends Thread {
                 String endNum = range.split("-")[1];
                 start = Integer.parseInt(startNum);
                 end = Integer.parseInt(endNum);
-                rangeNum[0] = start;
-                rangeNum[1] = end;
+                this.rangeNum[0] = start;
+                this.rangeNum[1] = end;
             }
         }
-        return rangeNum;
     }
 
     // String[] acceptableFiles = {"txt", "css", "html", "gif", "jpg", "png", "js",
@@ -309,44 +296,39 @@ public class ThreadedHTTPWorker extends Thread {
         }
     }
 
-    private void sendPartialContent(String MIMEType, int rangeStart, int rangeEnd, File f, long fileSize) {
+    private void sendPartialContent(String MIMEType, int[] numRange, File f) {
         try {
             String date = getDateInfo();
+            int rangeEnd = numRange[1];
+            int rangeStart = numRange[0];
             int actualLength = rangeEnd - rangeStart + 1;
             String partialResponse = "HTTP/1.1 206 Partial Content" + this.CRLF +
                     "Content-Type: " + MIMEType + this.CRLF +
                     "Content-Length: " + actualLength + this.CRLF +
                     "Date: " + date + " GMT" + this.CRLF +
-                    "Content-Range: bytes " + rangeStart + "-" + rangeEnd + "/" + fileSize + this.CRLF +
+                    "Content-Range: bytes " + rangeStart + "-" + rangeEnd + "/" + f.length() + this.CRLF +
                     "Connection: close" + this.CRLF +
                     this.CRLF;
             this.outputStream.writeBytes(partialResponse);
-            sendPartialFile(f, rangeStart, rangeEnd);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    private void sendPartialFile(File f, int rangeStart, int readLen) {
-        try {
             FileInputStream fileInputStream = new FileInputStream(f);
-            byte[] buffer = new byte[readLen];
-            fileInputStream.read(buffer, rangeStart, readLen);
-            this.outputStream.write(buffer, 0, readLen);
+            byte[] buffer = new byte[rangeEnd];
+            fileInputStream.read(buffer, rangeStart, rangeEnd);
+            this.outputStream.write(buffer, 0, rangeEnd);
             fileInputStream.close();
+            // sendPartialFile(f, rangeStart, rangeEnd);
         } catch (IOException e) {
             e.printStackTrace();
         }
+
     }
 
-    private void sendFullContent(String MIMEType, File f, long fileSize) {
+    private void sendFullContent(String MIMEType, File f) {
         try {
             String date = getDateInfo();
             DateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy hh:mm:ss");
             String response = "HTTP/1.1 200 OK" + this.CRLF +
                     "Content-Type: " + MIMEType + this.CRLF +
-                    "Content-Length: " + fileSize + this.CRLF +
+                    "Content-Length: " + f.length() + this.CRLF +
                     "Date: " + date + " GMT" + this.CRLF +
                     "Last-Modified: " + formatter.format(f.lastModified()) + " GMT" + this.CRLF +
                     "Connection: close" + this.CRLF +
@@ -354,7 +336,21 @@ public class ThreadedHTTPWorker extends Thread {
             // System.out.println(response);
             this.outputStream.writeBytes(response);
             System.out.println("Response header sent ... ");
-            sendFileNormal(f);
+            int bytes = 0;
+            // Open the File
+            FileInputStream fileInputStream = new FileInputStream(f);
+
+            // Here we break file into chunks
+            byte[] buffer = new byte[1024];
+            while ((bytes = fileInputStream.read(buffer)) != -1) {
+                // Send the file
+                this.outputStream.write(buffer, 0, bytes); // file content
+                this.outputStream.flush(); // flush all the contents into stream
+            }
+            // close the file here
+            // System.out.println("File sent");
+            fileInputStream.close();
+            // sendFileNormal(f);
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -367,27 +363,5 @@ public class ThreadedHTTPWorker extends Thread {
         cal.setTime(new Date());
         DateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy hh:mm:ss");
         return formatter.format(cal.getTime());
-    }
-
-    private void sendFileNormal(File file) {
-        try {
-            int bytes = 0;
-            // Open the File
-            FileInputStream fileInputStream = new FileInputStream(file);
-
-            // Here we break file into chunks
-            byte[] buffer = new byte[1024];
-            while ((bytes = fileInputStream.read(buffer)) != -1) {
-                // Send the file
-                this.outputStream.write(buffer, 0, bytes); // file content
-                this.outputStream.flush(); // flush all the contents into stream
-            }
-            // close the file here
-            // System.out.println("File sent");
-            fileInputStream.close();
-        } catch (IOException e) {
-            System.out.println("File transfer issue");
-            e.printStackTrace();
-        }
     }
 }
