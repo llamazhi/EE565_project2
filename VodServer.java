@@ -6,8 +6,8 @@ import java.util.HashMap;
 // This is the main driver class for the project
 public class VodServer {
     private static HashMap<String, ArrayList<RemoteServerInfo>> parameterMap;
-    private static Double completeness;
-    private static Integer bitRate;
+    private static Double completeness = 0.0;
+    private static Integer bitRate = 0;
 
     public static void addPeer(String filepath, RemoteServerInfo info) {
         if (!VodServer.parameterMap.containsKey(filepath)) {

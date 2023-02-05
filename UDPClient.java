@@ -81,6 +81,7 @@ public class UDPClient {
                 }
 
                 while (receivedChunks.size() < numChunks) {
+                    VodServer.setStatusParams(100.0 * receivedChunks.size() / numChunks, 8192);
                     System.out.printf("%.2f", 100.0 * receivedChunks.size() / numChunks);
                     System.out.println(" % complete");
                     int retries = 3;
@@ -128,6 +129,7 @@ public class UDPClient {
                     }
                 }
 
+                VodServer.setStatusParams(100.0 * receivedChunks.size() / numChunks, 8192);
                 System.out.printf("%.2f", 100.0 * receivedChunks.size() / numChunks);
                 System.out.println(" % complete");
 

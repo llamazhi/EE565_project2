@@ -244,10 +244,10 @@ public class ThreadedHTTPWorker extends Thread {
     private void getStatus() {
         try {
             // TODO: Get completeness and bitRate from UDP server
-            double completeness = 0.345;
-            int bitRate = 8196;
+            double completeness = VodServer.getCompleteness();
+            int bitRate = VodServer.getBitRate();
 
-            String completenessMsg = Double.toString((completeness * 100)) + " %";
+            String completenessMsg = Double.toString(completeness) + " %";
             String bitRateMsg = Integer.toString(bitRate) + " bytes/s";
             // VodServer.setStatusParams(completeness, bitRate);
             // String completenessMsg = Double.toString(VodServer.getCompleteness());
