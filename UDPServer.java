@@ -17,9 +17,9 @@ public class UDPServer extends Thread {
     private final static int bufferSize = 1024;
     private static Map<Integer, byte[]> fileChunks = new HashMap<>();
 
-    private final static int MAX_WINDOW_SIZE = 100;
-    private static int windowStart = 1;
-    private static int windowEnd = MAX_WINDOW_SIZE;
+    private final static int MAX_WINDOW_SIZE = 50;
+    private int windowStart;
+    private int windowEnd;
 
     public UDPServer(int port) {
         this.port = port;
@@ -89,28 +89,26 @@ public class UDPServer extends Thread {
             fis.close();
 
             // send response packet
-            // DatagramPacket outPkt = new DatagramPacket(data, data.length,
-            // inPkt.getAddress(),
-            // inPkt.getPort());
             DatagramPacket outPkt = new DatagramPacket(data, data.length, inPkt.getAddress(), inPkt.getPort());
             socket.send(outPkt);
             audit.info(numChunks + " chunks in total");
 
-        } else if (seqNum > 0 && seqNum <= numChunks) {
+        } else if (seqNum > 0 && seqNum <= numChunks) { // deal with actual content chunks
             // request for specific chunk of data
-            audit.info("Client request chunk packet at seqNum: " + seqNum);
+            // audit.info("Client request chunk packet at seqNum: " + seqNum);
 
             // check if seqNum is within window
             // release the buffer if the leftmost packet has been received by client
             if (seqNum > windowEnd) {
                 fileChunks.remove(windowStart);
             }
+
             DatagramPacket outPkt = new DatagramPacket(fileChunks.get(seqNum),
                     fileChunks.get(seqNum).length,
                     inPkt.getAddress(),
                     inPkt.getPort());
             socket.send(outPkt);
-            audit.info("No." + seqNum + " chunk has been sent");
+            // audit.info("No." + seqNum + " chunk has been sent");
         }
     }
 }

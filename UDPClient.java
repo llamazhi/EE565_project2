@@ -16,6 +16,8 @@ public class UDPClient {
     private int trafficRate = 1000000;
     private long sendTime;
     private long receiveTime;
+    private int windowStart;
+    private int windowEnd;
     private List<Long> RTT;
 
     public void setRemoteServerPort(int port) {
@@ -116,35 +118,35 @@ public class UDPClient {
                 this.requestFileLastModified = Long.parseLong(responseValues[1]);
                 this.numChunks = Integer.parseInt(responseValues[2]);
                 this.windowSize = Integer.parseInt(responseValues[3]);
-                System.out.println("numChunks: " + numChunks + " windowSize: " + windowSize);
+                // System.out.println("numChunks: " + numChunks + " windowSize: " + windowSize);
 
                 // slide window until the rightmost end hits the end of chunks
                 // another condition to start receiving files is numChunks is even smaller
                 // than windowSize
-                int windowStart = 1;
-                int windowEnd = windowSize;
+                this.windowStart = 1;
+                this.windowEnd = this.windowStart + windowSize - 1;
                 System.out.println("windowStart: " + windowStart + " , windowEnd: " + windowEnd);
 
-                while (windowEnd <= numChunks || numChunks <= windowSize) {
+                while (this.windowEnd <= this.numChunks || numChunks <= this.windowSize) {
                     if (this.receivedChunks.size() == this.numChunks) {
                         break;
                     }
-                    System.out.println("Current windowEnd: " + windowEnd);
+                    // System.out.println("Current windowEnd: " + windowEnd);
 
                     // send request for each chunk within the window
-                    for (int i = windowStart; i <= windowEnd; i++) {
+                    for (int i = this.windowStart; i <= this.windowEnd; i++) {
                         // requestData = new byte[bufferSize];
                         seqNumBytes = ByteBuffer.allocate(4).putInt(i).array();
                         System.arraycopy(seqNumBytes, 0, requestData, 0, 4);
                         outPkt = new DatagramPacket(requestData, requestData.length, host, info.port);
                         socket.send(outPkt);
-                        this.sendTime = new Date().getTime();
+                        // this.sendTime = new Date().getTime();
                     }
 
-                    System.out.println("This round of packets have been requested");
+                    // System.out.println("This round of packets have been requested");
 
                     // attempt to receive packet within the window
-                    for (int i = windowStart; i <= windowEnd; i++) {
+                    for (int i = this.windowStart; i <= this.windowEnd; i++) {
                         // System.out.println("Test if pre-receive works: " + i);
                         if (this.receivedChunks.size() == this.numChunks) {
                             break;
@@ -152,26 +154,28 @@ public class UDPClient {
                         socket.receive(inPkt);
 
                         // control the traffic rate of the socket
-                        this.receiveTime = new Date().getTime();
-                        this.RTT.add(receiveTime - sendTime);
-                        resizeRTTList();
-                        int waitTime = getWaitTime(getTrafficRate(), this.trafficRate);
-                        socket.setSoTimeout(waitTime);
+                        // this.receiveTime = new Date().getTime();
+                        // this.RTT.add(receiveTime - sendTime);
+                        // resizeRTTList();
+                        // int waitTime = getWaitTime(getTrafficRate(), this.trafficRate);
+                        // socket.setSoTimeout(waitTime);
 
-                        System.out.println("Socket has been set to wait for " + waitTime + " miliseconds");
+                        // System.out.println("Socket has been set to wait for " + waitTime + "
+                        // miliseconds");
 
                         seqNumBytes = new byte[4];
                         System.arraycopy(inPkt.getData(), 0, seqNumBytes, 0, 4);
                         int seqNum = ByteBuffer.wrap(seqNumBytes).getInt();
+                        // System.out.println("No." + seqNum + " packets have been received");
 
                         // move to the next iteration if the current chunk has been received
                         // else receive the packet
-                        if (receivedChunks.containsKey(seqNum)) {
+                        if (this.receivedChunks.containsKey(seqNum)) {
                             continue;
                         } else {
                             byte[] chunk = new byte[bufferSize];
                             System.arraycopy(inPkt.getData(), 0, chunk, 0, bufferSize);
-                            receivedChunks.put(seqNum, chunk);
+                            this.receivedChunks.put(seqNum, chunk);
                         }
                     }
 
@@ -179,7 +183,7 @@ public class UDPClient {
 
                     // move the window by 1 packet if the leftmost packet has been received
                     if (receivedChunks.containsKey(windowStart)) {
-                        System.out.println("Receive the leftmost packet, time to slide window");
+                        // System.out.println("Receive the leftmost packet, time to slide window");
                         windowStart += 1;
                         windowEnd = windowStart + windowSize - 1;
                     }
