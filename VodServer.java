@@ -16,13 +16,16 @@ public class VodServer {
         VodServer.parameterMap.get(filepath).add(info);
     }
 
-    public static void setStatusParams(double completeness, int bitRate) {
+    public static void setCompleteness(double completeness) {
         VodServer.completeness = completeness;
-        VodServer.bitRate = bitRate;
     }
 
     public static double getCompleteness() {
         return VodServer.completeness;
+    }
+
+    public static void setRate(int bitRate) {
+        VodServer.bitRate = bitRate;
     }
 
     public static int getBitRate() {

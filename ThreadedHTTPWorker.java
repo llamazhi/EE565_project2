@@ -139,7 +139,8 @@ public class ThreadedHTTPWorker extends Thread {
             String path = keyValue.get("path");
             int port = Integer.parseInt(keyValue.get("port"));
             String host = keyValue.get("host");
-            RemoteServerInfo info = new RemoteServerInfo(host, port);
+            int rate = Integer.parseInt(keyValue.get("rate"));
+            RemoteServerInfo info = new RemoteServerInfo(host, port, rate);
             VodServer.addPeer(path, info);
             // Pass the queries to backend port
             // At this stage, we just print them out
@@ -170,6 +171,7 @@ public class ThreadedHTTPWorker extends Thread {
             sendErrorResponse("Please add peer first!");
             return;
         }
+        VodServer.setRate(infos.get(0).rate);
         udpclient.startClient(path, infos.get(0));
         if (udpclient.getReceivedChunks().size() == 0) {
             sendErrorResponse("File not found!");

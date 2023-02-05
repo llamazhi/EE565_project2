@@ -73,7 +73,6 @@ public class UDPClient {
                 System.out.println("windowStart: " + windowStart + " , windowEnd: " + windowEnd);
                 // send request for each chunk
                 for (int i = 1; i <= numChunks; i++) {
-                    // requestData = new byte[bufferSize];
                     byte[] seqnumBytes = ByteBuffer.allocate(4).putInt(i).array();
                     System.arraycopy(seqnumBytes, 0, requestData, 0, 4);
                     outPkt = new DatagramPacket(requestData, requestData.length, host, info.port);
@@ -81,7 +80,7 @@ public class UDPClient {
                 }
 
                 while (receivedChunks.size() < numChunks) {
-                    VodServer.setStatusParams(100.0 * receivedChunks.size() / numChunks, 8192);
+                    VodServer.setCompleteness(100.0 * receivedChunks.size() / numChunks);
                     System.out.printf("%.2f", 100.0 * receivedChunks.size() / numChunks);
                     System.out.println(" % complete");
                     int retries = 3;
@@ -129,7 +128,7 @@ public class UDPClient {
                     }
                 }
 
-                VodServer.setStatusParams(100.0 * receivedChunks.size() / numChunks, 8192);
+                VodServer.setCompleteness(100.0 * receivedChunks.size() / numChunks);
                 System.out.printf("%.2f", 100.0 * receivedChunks.size() / numChunks);
                 System.out.println(" % complete");
 
