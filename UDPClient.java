@@ -109,9 +109,9 @@ public class UDPClient {
                 int windowStart = 1;
                 int windowEnd = Math.min(windowSize, this.numChunks);
                 byte[][] buffer = new byte[windowSize][bufferSize];
-                // long startTime = System.currentTimeMillis();
-                // double bitsSent = 0.0;
-                // double sleepTime = 0.0;
+                long startTime = System.currentTimeMillis();
+                double bitsSent = 0.0;
+                double sleepTime = 0.0;
                 Set<Integer> seen = new HashSet<Integer>();
 
                 while (windowStart <= windowEnd && windowEnd <= numChunks) {
@@ -151,19 +151,31 @@ public class UDPClient {
                         continue;
                     }
 
+                    // Rate limiting
+                    bitsSent += bufferSize * 8 * windowSize;
+                    double elapsedTime = (System.currentTimeMillis() - startTime) / 1000.0;
+                    double currentBitsPerSecond = bitsSent / elapsedTime;
+                    if (VodServer.getBitRate() != 0 && currentBitsPerSecond > VodServer.getBitRate()) {
+                        sleepTime = (bitsSent / VodServer.getBitRate() - elapsedTime);
+                        if (sleepTime > 0) {
+                            try {
+                                System.out.println("sleep for: " + sleepTime + " s");
+                                Thread.sleep((long) (sleepTime * 1000));
+                            } catch (InterruptedException e) {
+                                System.out.println("Thread building issue");
+                            }
+                        }
+                    }
+
                     for (int i = 0; i <= windowEnd - windowStart; i++) {
                         outputStream.write(buffer[i], 4, bufferSize - 4);
                     }
                     windowStart = windowEnd + 1;
                     windowEnd = Math.min(windowStart + windowSize - 1, numChunks);
+                    VodServer.setCompleteness(100.0 * seen.size() / numChunks);
                     System.out.printf("%.2f", 100.0 * seen.size() / numChunks);
                     System.out.println(" % complete");
                 }
-
-                VodServer.setCompleteness(100.0 * seen.size() / numChunks);
-                System.out.printf("%.2f", 100.0 * seen.size() / numChunks);
-                System.out.println(" % complete");
-
             } catch (SocketTimeoutException ex) {
                 socket.close();
                 System.err.println("No connection within 1 seconds");
@@ -172,7 +184,9 @@ public class UDPClient {
             // System.out.printf("%.2f", 100.0 * seen.size() / numChunks);
             // System.out.println(" % complete");
             // System.out.println("FROM SERVER: " + seen.size() + " packets");
-        } catch (IOException ex) {
+        } catch (
+
+        IOException ex) {
             ex.printStackTrace();
         }
     }

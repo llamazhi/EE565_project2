@@ -143,7 +143,7 @@ public class ThreadedHTTPWorker extends Thread {
             String path = keyValue.get("path");
             int port = Integer.parseInt(keyValue.get("port"));
             String host = keyValue.get("host");
-            int rate = Integer.parseInt(keyValue.get("rate"));
+            int rate = Integer.parseInt(keyValue.get("rate")) * 1000;
             RemoteServerInfo info = new RemoteServerInfo(host, port, rate);
             VodServer.addPeer(path, info);
             // Pass the queries to backend port
@@ -208,7 +208,7 @@ public class ThreadedHTTPWorker extends Thread {
             int bitRate = VodServer.getBitRate();
 
             String completenessMsg = Double.toString(completeness) + " %";
-            String bitRateMsg = Integer.toString(bitRate) + " bytes/s";
+            String bitRateMsg = Integer.toString(bitRate) + " bit/s";
             // VodServer.setStatusParams(completeness, bitRate);
             // String completenessMsg = Double.toString(VodServer.getCompleteness());
             // String bitRateMsg = Integer.toString(VodServer.getBitRate());
