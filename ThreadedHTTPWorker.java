@@ -38,14 +38,12 @@ public class ThreadedHTTPWorker extends Thread {
             String inputLine;
             String req = "";
             while ((inputLine = in.readLine()) != null) {
-                // System.out.println (inputLine);
                 req += inputLine;
                 req += "\r\n";
                 if (inputLine.length() == 0) {
                     break;
                 }
             }
-            // System.out.println(req);
             String relativeURL = preprocessReq(req);
             parseURI(req, relativeURL);
         } catch (IOException e) {
@@ -77,7 +75,6 @@ public class ThreadedHTTPWorker extends Thread {
     }
 
     private String preprocessReq(String req) {
-        // System.out.println(req);
         String[] reqComponents = req.split("\r\n");
         System.out.println("first line: " + reqComponents[0]);
         String relativeURL = reqComponents[0];
@@ -122,7 +119,6 @@ public class ThreadedHTTPWorker extends Thread {
             configureRate(parser);
         } else if (parser.hasStatus()) {
             getStatus();
-            // this.outputStream.writeBytes(info);
         } else {
             sendErrorResponse("Invalid request");
         }
@@ -153,9 +149,6 @@ public class ThreadedHTTPWorker extends Thread {
                     "Content-Type: text/html" + this.CRLF +
                     "Content-Length:" + html.getBytes().length + this.CRLF +
                     this.CRLF + html;
-            // sprintf(response, "HTTP/1.1 200 OK\nLast-Modified: %s\nConnection:
-            // close\nContent-Type: %s\nAccept-Ranges: bytes\nDate: %s\nContent-Length:
-            // %d\n\n", lastModifiedTimeString, contentType, dateTimeString, file_size);
             this.outputStream.writeBytes(response);
 
         } catch (NumberFormatException | IOException e) {
@@ -200,7 +193,7 @@ public class ThreadedHTTPWorker extends Thread {
             int rate = Integer.parseInt(parser.getQueries()[0].split("=")[1]);
             for (Map.Entry<String, ArrayList<RemoteServerInfo>> entry : VodServer.parameterMap.entrySet()) {
                 for (int i = 0; i < entry.getValue().size(); i++) {
-                    entry.getValue().get(i).rate = rate;
+                    entry.getValue().get(i).rate = rate * 1000;
                 }
             }
 
@@ -262,9 +255,6 @@ public class ThreadedHTTPWorker extends Thread {
         }
     }
 
-    // String[] acceptableFiles = {"txt", "css", "html", "gif", "jpg", "png", "js",
-    // "mp4", "webm", "ogg"};
-
     private String categorizeFile(String path) {
         try {
             // convert the file name into string
@@ -297,7 +287,6 @@ public class ThreadedHTTPWorker extends Thread {
             fileInputStream.read(buffer, rangeStart, rangeEnd);
             this.outputStream.write(buffer, 0, rangeEnd);
             fileInputStream.close();
-            // sendPartialFile(f, rangeStart, rangeEnd);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -315,7 +304,6 @@ public class ThreadedHTTPWorker extends Thread {
                     "Last-Modified: " + formatter.format(f.lastModified()) + " GMT" + this.CRLF +
                     "Connection: close" + this.CRLF +
                     this.CRLF;
-            // System.out.println(response);
             this.outputStream.writeBytes(response);
             System.out.println("Response header sent ... ");
             int bytes = 0;
@@ -330,9 +318,7 @@ public class ThreadedHTTPWorker extends Thread {
                 this.outputStream.flush(); // flush all the contents into stream
             }
             // close the file here
-            // System.out.println("File sent");
             fileInputStream.close();
-            // sendFileNormal(f);
 
         } catch (IOException e) {
             e.printStackTrace();

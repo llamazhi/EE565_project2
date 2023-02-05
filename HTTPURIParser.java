@@ -14,10 +14,6 @@ public class HTTPURIParser {
         }
     }
 
-    // public int getTCPPort() {
-    // return this.uriObj.getPort();
-    // }
-
     // Returns all the queries contained in the uri, splitting them by "&"
     public String[] getQueries() {
         return this.uriObj.getQuery().split("&");

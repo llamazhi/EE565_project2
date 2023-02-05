@@ -7,7 +7,6 @@ import java.text.SimpleDateFormat;
 
 public class UDPClient {
     private final static int bufferSize = 1024;
-    private Map<Integer, byte[]> receivedChunks;
     private long requestFileSize;
     private long requestFileLastModified;
     private int numChunks;
@@ -29,10 +28,6 @@ public class UDPClient {
 
     public int getNumChunks() {
         return this.numChunks;
-    }
-
-    public Map<Integer, byte[]> getReceivedChunks() {
-        return this.receivedChunks;
     }
 
     private String getDateInfo() {
@@ -60,7 +55,6 @@ public class UDPClient {
     public void startClient(String path, RemoteServerInfo info, DataOutputStream outputStream) {
         try (DatagramSocket socket = new DatagramSocket(0)) {
             this.requestFilename = path;
-            receivedChunks = new HashMap<>();
 
             // send request packet
             InetAddress host = InetAddress.getByName(info.hostname);
@@ -143,10 +137,13 @@ public class UDPClient {
                             break;
                         }
                     }
+
+                    // check if receive all the chunks in this window
                     for (int i = windowStart; i <= windowEnd; i++) {
                         windowFull &= seen.contains(i);
                     }
 
+                    // if not, continue the while loop to resend requests
                     if (!windowFull) {
                         continue;
                     }
@@ -167,9 +164,12 @@ public class UDPClient {
                         }
                     }
 
+                    // write chunks into outputStream
                     for (int i = 0; i <= windowEnd - windowStart; i++) {
                         outputStream.write(buffer[i], 4, bufferSize - 4);
+                        outputStream.flush(); // flush all the contents into stream
                     }
+
                     windowStart = windowEnd + 1;
                     windowEnd = Math.min(windowStart + windowSize - 1, numChunks);
                     VodServer.setCompleteness(100.0 * seen.size() / numChunks);
@@ -181,10 +181,6 @@ public class UDPClient {
                 socket.close();
                 System.err.println("No connection within 1 seconds");
             }
-
-            // System.out.printf("%.2f", 100.0 * seen.size() / numChunks);
-            // System.out.println(" % complete");
-            // System.out.println("FROM SERVER: " + seen.size() + " packets");
         } catch (
 
         IOException ex) {
