@@ -91,14 +91,13 @@ public class UDPClient {
                 this.windowSize = Integer.parseInt(responseValues[3]);
                 System.out.println("numChunks: " + numChunks + " windowSize: " + windowSize);
 
-                String date = getDateInfo();
                 DateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy hh:mm:ss");
                 String MIMEType = URLConnection.getFileNameMap().getContentTypeFor(path);
                 String response = "HTTP/1.1 200 OK" + this.CRLF +
                         "Content-Type: " + MIMEType + this.CRLF +
-                        "Content-Length: " + this.getRequestFileSize() + this.CRLF +
-                        "Date: " + date + " GMT" + this.CRLF +
-                        "Last-Modified: " + formatter.format(getRequestFileLastModified()) + " GMT"
+                        "Content-Length: " + String.valueOf(requestFileSize) + this.CRLF +
+                        "Date: " + getDateInfo() + " GMT" + this.CRLF +
+                        "Last-Modified: " + formatter.format(requestFileLastModified) + " GMT"
                         + this.CRLF +
                         "Connection: close" + this.CRLF +
                         this.CRLF;
@@ -109,7 +108,6 @@ public class UDPClient {
                 // than windowSize
                 int windowStart = 1;
                 int windowEnd = Math.min(windowSize, this.numChunks);
-                System.out.println("windowStart: " + windowStart + " , windowEnd: " + windowEnd);
                 byte[][] buffer = new byte[windowSize][bufferSize];
                 // long startTime = System.currentTimeMillis();
                 // double bitsSent = 0.0;
@@ -131,6 +129,7 @@ public class UDPClient {
                     // receive packet within the window
                     while (true) {
                         try {
+                            inPkt = new DatagramPacket(new byte[bufferSize], bufferSize);
                             socket.setSoTimeout(100);
                             socket.receive(inPkt);
                             int seqNum = byteArrayToInt(inPkt.getData());
@@ -153,7 +152,6 @@ public class UDPClient {
                     }
 
                     for (int i = 0; i <= windowEnd - windowStart; i++) {
-                        windowFull &= seen.contains(i);
                         outputStream.write(buffer[i], 4, bufferSize - 4);
                     }
                     windowStart = windowEnd + 1;
