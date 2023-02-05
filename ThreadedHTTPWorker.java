@@ -172,38 +172,39 @@ public class ThreadedHTTPWorker extends Thread {
             return;
         }
         VodServer.setRate(infos.get(0).rate);
-        udpclient.startClient(path, infos.get(0));
-        if (udpclient.getReceivedChunks().size() == 0) {
-            sendErrorResponse("File not found!");
-        }
+        udpclient.startClient(path, infos.get(0), this.outputStream);
+        // if (udpclient.getReceivedChunks().size() == 0) {
+        // sendErrorResponse("File not found!");
+        // }
 
-        try {
-            String date = getDateInfo();
-            DateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy hh:mm:ss");
-            String MIMEType = categorizeFile(path);
-            String response = "HTTP/1.1 200 OK" + this.CRLF +
-                    "Content-Type: " + MIMEType + this.CRLF +
-                    "Content-Length: " + udpclient.getRequestFileSize() + this.CRLF +
-                    "Date: " + date + " GMT" + this.CRLF +
-                    "Last-Modified: " + formatter.format(udpclient.getRequestFileLastModified()) + " GMT" + this.CRLF +
-                    "Connection: close" + this.CRLF +
-                    this.CRLF;
-            // System.out.println(response);
-            this.outputStream.writeBytes(response);
-            System.out.println("Response header sent ... ");
+        // try {
+        // String date = getDateInfo();
+        // DateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy hh:mm:ss");
+        // String MIMEType = categorizeFile(path);
+        // String response = "HTTP/1.1 200 OK" + this.CRLF +
+        // "Content-Type: " + MIMEType + this.CRLF +
+        // "Content-Length: " + udpclient.getRequestFileSize() + this.CRLF +
+        // "Date: " + date + " GMT" + this.CRLF +
+        // "Last-Modified: " + formatter.format(udpclient.getRequestFileLastModified())
+        // + " GMT" + this.CRLF +
+        // "Connection: close" + this.CRLF +
+        // this.CRLF;
+        // // System.out.println(response);
+        // this.outputStream.writeBytes(response);
+        // System.out.println("Response header sent ... ");
 
-            // get received chunks from udpclient
-            int numChunks = udpclient.getNumChunks();
-            Map<Integer, byte[]> receivedChunks = udpclient.getReceivedChunks();
-            for (int i = 1; i <= numChunks; i++) {
-                // Send the file
-                this.outputStream.write(receivedChunks.get(i), 4, 1020); // file content
-                this.outputStream.flush(); // flush all the contents into stream
-            }
+        // // get received chunks from udpclient
+        // int numChunks = udpclient.getNumChunks();
+        // Map<Integer, byte[]> receivedChunks = udpclient.getReceivedChunks();
+        // for (int i = 1; i <= numChunks; i++) {
+        // // Send the file
+        // this.outputStream.write(receivedChunks.get(i), 4, 1020); // file content
+        // this.outputStream.flush(); // flush all the contents into stream
+        // }
 
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        // } catch (IOException e) {
+        // e.printStackTrace();
+        // }
 
         // System.out.println("viewPath: " + path);
         // File f = new File(path);
