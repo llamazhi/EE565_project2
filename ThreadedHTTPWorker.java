@@ -143,7 +143,7 @@ public class ThreadedHTTPWorker extends Thread {
             String path = keyValue.get("path");
             int port = Integer.parseInt(keyValue.get("port"));
             String host = keyValue.get("host");
-            int rate = Integer.parseInt(keyValue.get("rate"));
+            int rate = Integer.parseInt(keyValue.get("rate")) * 1000;
             RemoteServerInfo info = new RemoteServerInfo(host, port, rate);
             VodServer.addPeer(path, info);
             // Pass the queries to backend port
@@ -205,13 +205,10 @@ public class ThreadedHTTPWorker extends Thread {
         try {
             // TODO: Get completeness and bitRate from UDP server
             double completeness = VodServer.getCompleteness();
-            int bitRate = VodServer.getBitRate();
+            double bitRate = VodServer.getCurrentBitsPerSecond();
 
             String completenessMsg = Double.toString(completeness) + " %";
-            String bitRateMsg = Integer.toString(bitRate) + " bytes/s";
-            // VodServer.setStatusParams(completeness, bitRate);
-            // String completenessMsg = Double.toString(VodServer.getCompleteness());
-            // String bitRateMsg = Integer.toString(VodServer.getBitRate());
+            String bitRateMsg = Double.toString(bitRate) + " bits/s";
             String html = "<html><body><h1>Current status: </h1><p>File Complenteness: " + completenessMsg
                     + "<br> Current bit rate: " + bitRateMsg + "</p></body></html>";
             String response = "HTTP/1.1 200 OK" + this.CRLF +
