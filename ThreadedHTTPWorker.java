@@ -119,8 +119,7 @@ public class ThreadedHTTPWorker extends Thread {
             path = path.replace("peer/view/", "");
             viewContent(path);
         } else if (parser.hasConfig()) {
-            // int rate = Integer.parseInt(this.parameterMap.get("rate"));
-            // configureRate(rate);
+            configureRate(parser);
         } else if (parser.hasStatus()) {
             getStatus();
             // this.outputStream.writeBytes(info);
@@ -196,14 +195,30 @@ public class ThreadedHTTPWorker extends Thread {
 
     }
 
-    private void configureRate(int rate) {
-        // TODO:
-        // Add functionality to actually configure the transfer rate
+    private void configureRate(HTTPURIParser parser) {
+        try {
+            int rate = Integer.parseInt(parser.getQueries()[0].split("=")[1]);
+            for (Map.Entry<String, ArrayList<RemoteServerInfo>> entry : VodServer.parameterMap.entrySet()) {
+                for (int i = 0; i < entry.getValue().size(); i++) {
+                    entry.getValue().get(i).rate = rate;
+                }
+            }
+
+            String html = "<html><body><h1>Bit rate set to " + rate * 1000 + " bits/s</h1></body></html>";
+            String response = "HTTP/1.1 200 OK" + this.CRLF +
+                    "Date: " + getDateInfo() + " GMT" + this.CRLF +
+                    "Content-Type: text/html" + this.CRLF +
+                    "Content-Length:" + html.getBytes().length + this.CRLF +
+                    this.CRLF + html;
+            this.outputStream.writeBytes(response);
+        } catch (NumberFormatException | IOException e) {
+            sendErrorResponse("Invalid rate configure");
+        }
+
     }
 
     private void getStatus() {
         try {
-            // TODO: Get completeness and bitRate from UDP server
             double completeness = VodServer.getCompleteness();
             double bitRate = VodServer.getCurrentBitsPerSecond();
 
