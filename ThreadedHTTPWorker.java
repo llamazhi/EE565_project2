@@ -208,7 +208,7 @@ public class ThreadedHTTPWorker extends Thread {
             int bitRate = VodServer.getBitRate();
 
             String completenessMsg = Double.toString(completeness) + " %";
-            String bitRateMsg = Integer.toString(bitRate) + " bit/s";
+            String bitRateMsg = Integer.toString(bitRate) + " bits/s";
             // VodServer.setStatusParams(completeness, bitRate);
             // String completenessMsg = Double.toString(VodServer.getCompleteness());
             // String bitRateMsg = Integer.toString(VodServer.getBitRate());
