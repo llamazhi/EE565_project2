@@ -1,6 +1,5 @@
 import java.io.*;
 import java.net.*;
-import java.nio.ByteBuffer;
 import java.nio.charset.*;
 import java.util.*;
 import java.util.logging.*;
@@ -8,7 +7,6 @@ import java.lang.Thread;
 
 public class UDPServer extends Thread {
     private final static Logger audit = Logger.getLogger("requests");
-    private final static Logger errors = Logger.getLogger("errors");
 
     private int port;
     private static int numChunks;
@@ -23,21 +21,28 @@ public class UDPServer extends Thread {
         this.port = port;
     }
 
+    public static void intToByteArray(int value, byte[] buffer) {
+        buffer[0] = (byte) (value >>> 24);
+        buffer[1] = (byte) (value >>> 16);
+        buffer[2] = (byte) (value >>> 8);
+        buffer[3] = (byte) value;
+    };
+
+    public static int byteArrayToInt(byte[] bytes) {
+        return (bytes[0] << 24) & 0xff000000 |
+                (bytes[1] << 16) & 0x00ff0000 |
+                (bytes[2] << 8) & 0x0000ff00 |
+                (bytes[3] & 0xff);
+    }
+
     @Override
     public void run() {
         try (DatagramSocket socket = new DatagramSocket(this.port)) {
             System.out.println("UDP Server listening at: " + this.port);
-
             while (true) {
-                try {
-                    DatagramPacket inPkt = new DatagramPacket(new byte[bufferSize], bufferSize);
-                    socket.receive(inPkt);
-                    handleInPacket(inPkt, socket);
-                } catch (SocketTimeoutException ex) {
-                    System.out.println("No connection within 1000 ms");
-                } catch (IOException | RuntimeException ex) {
-                    errors.log(Level.SEVERE, ex.getMessage(), ex);
-                }
+                DatagramPacket inPkt = new DatagramPacket(new byte[bufferSize], bufferSize);
+                socket.receive(inPkt);
+                handleInPacket(inPkt, socket);
             }
         } catch (IOException ex) {
             ex.printStackTrace();
@@ -45,9 +50,7 @@ public class UDPServer extends Thread {
     }
 
     private void handleInPacket(DatagramPacket inPkt, DatagramSocket socket) throws IOException {
-        byte[] seqNumBytes = new byte[4];
-        System.arraycopy(inPkt.getData(), 0, seqNumBytes, 0, 4);
-        int seqNum = ByteBuffer.wrap(seqNumBytes).getInt();
+        int seqNum = byteArrayToInt(inPkt.getData());
         String requestString = new String(inPkt.getData(), 4, inPkt.getLength() - 4).trim();
 
         if (seqNum == 0 && !requestString.isEmpty()) {
@@ -78,8 +81,7 @@ public class UDPServer extends Thread {
             byte[] chunk = new byte[bufferSize];
             FileInputStream fis = new FileInputStream(requestFile);
             while (fis.read(chunk, 4, bufferSize - 4) > 0) {
-                byte[] chunkNumberByte = ByteBuffer.allocate(4).putInt(chunkIndex).array();
-                System.arraycopy(chunkNumberByte, 0, chunk, 0, 4);
+                intToByteArray(chunkIndex, chunk);
                 fileChunks.put(chunkIndex, chunk);
                 chunkIndex++;
                 chunk = new byte[bufferSize];

@@ -4,13 +4,12 @@ import java.lang.Thread;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TimeZone;
 
 // ThreadedHTTPWorker class is responsible for all the
 // actual string & data transfer
@@ -145,7 +144,7 @@ public class ThreadedHTTPWorker extends Thread {
             // At this stage, we just print them out
             String html = "<html><body><h1>Peer Added!</h1></body></html>";
             String response = "HTTP/1.1 200 OK" + this.CRLF +
-                    "Date: " + getDateInfo() + " GMT" + this.CRLF +
+                    "Date: " + getGMTDate(new Date()) + this.CRLF +
                     "Content-Type: text/html" + this.CRLF +
                     "Content-Length:" + html.getBytes().length + this.CRLF +
                     this.CRLF + html;
@@ -168,7 +167,7 @@ public class ThreadedHTTPWorker extends Thread {
             return;
         }
         VodServer.setRate(infos.get(0).rate);
-        udpclient.startClient(path, infos.get(0), this.outputStream);
+        udpclient.startClient(path, infos, this.outputStream);
 
     }
 
@@ -176,7 +175,7 @@ public class ThreadedHTTPWorker extends Thread {
         try {
             String html = "<html><body><h1>404 Not Found!</h1><p>" + msg + "</p></body></html>";
             String response = "HTTP/1.1 404 Not Found" + this.CRLF +
-                    "Date: " + getDateInfo() + " GMT" + this.CRLF +
+                    "Date: " + getGMTDate(new Date()) + this.CRLF +
                     "Content-Type: text/html" + this.CRLF +
                     "Content-Length:" + html.getBytes().length + this.CRLF +
                     this.CRLF + html;
@@ -199,7 +198,7 @@ public class ThreadedHTTPWorker extends Thread {
 
             String html = "<html><body><h1>Bit rate set to " + rate * 1000 + " bits/s</h1></body></html>";
             String response = "HTTP/1.1 200 OK" + this.CRLF +
-                    "Date: " + getDateInfo() + " GMT" + this.CRLF +
+                    "Date: " + getGMTDate(new Date()) + this.CRLF +
                     "Content-Type: text/html" + this.CRLF +
                     "Content-Length:" + html.getBytes().length + this.CRLF +
                     this.CRLF + html;
@@ -220,7 +219,7 @@ public class ThreadedHTTPWorker extends Thread {
             String html = "<html><body><h1>Current status: </h1><p>File Complenteness: " + completenessMsg
                     + "<br> Current bit rate: " + bitRateMsg + "</p></body></html>";
             String response = "HTTP/1.1 200 OK" + this.CRLF +
-                    "Date: " + getDateInfo() + " GMT" + this.CRLF +
+                    "Date: " + getGMTDate(new Date()) + this.CRLF +
                     "Content-Type: text/html" + this.CRLF +
                     "Content-Length:" + html.getBytes().length + this.CRLF +
                     this.CRLF + html;
@@ -270,14 +269,13 @@ public class ThreadedHTTPWorker extends Thread {
 
     private void sendPartialContent(String MIMEType, int[] numRange, File f) {
         try {
-            String date = getDateInfo();
             int rangeEnd = numRange[1];
             int rangeStart = numRange[0];
             int actualLength = rangeEnd - rangeStart + 1;
             String partialResponse = "HTTP/1.1 206 Partial Content" + this.CRLF +
                     "Content-Type: " + MIMEType + this.CRLF +
                     "Content-Length: " + actualLength + this.CRLF +
-                    "Date: " + date + " GMT" + this.CRLF +
+                    "Date: " + getGMTDate(new Date()) + this.CRLF +
                     "Content-Range: bytes " + rangeStart + "-" + rangeEnd + "/" + f.length() + this.CRLF +
                     "Connection: close" + this.CRLF +
                     this.CRLF;
@@ -295,13 +293,11 @@ public class ThreadedHTTPWorker extends Thread {
 
     private void sendFullContent(String MIMEType, File f) {
         try {
-            String date = getDateInfo();
-            DateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy hh:mm:ss");
             String response = "HTTP/1.1 200 OK" + this.CRLF +
                     "Content-Type: " + MIMEType + this.CRLF +
                     "Content-Length: " + f.length() + this.CRLF +
-                    "Date: " + date + " GMT" + this.CRLF +
-                    "Last-Modified: " + formatter.format(f.lastModified()) + " GMT" + this.CRLF +
+                    "Date: " + getGMTDate(new Date()) + this.CRLF +
+                    "Last-Modified: " + getGMTDate(f.lastModified()) + this.CRLF +
                     "Connection: close" + this.CRLF +
                     this.CRLF;
             this.outputStream.writeBytes(response);
@@ -325,11 +321,10 @@ public class ThreadedHTTPWorker extends Thread {
         }
     }
 
-    private String getDateInfo() {
-        // produce day of the week
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(new Date());
-        DateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy hh:mm:ss");
-        return formatter.format(cal.getTime());
+    private String getGMTDate(Object date) {
+        SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z");
+        sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
+        return sdf.format(date);
     }
+
 }
