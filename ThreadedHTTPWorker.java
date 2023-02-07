@@ -18,7 +18,6 @@ public class ThreadedHTTPWorker extends Thread {
     private DataInputStream inputStream = null;
     private DataOutputStream outputStream = null;
     private final String CRLF = "\r\n";
-    private boolean isRangeRequest = false;
     private int[] rangeNum;
 
     public ThreadedHTTPWorker(Socket client) {
@@ -78,13 +77,6 @@ public class ThreadedHTTPWorker extends Thread {
         System.out.println("first line: " + reqComponents[0]);
         String relativeURL = reqComponents[0];
         relativeURL = relativeURL.replace("GET /", "").replace(" HTTP/1.1", "");
-
-        if (isRangeRequest(req)) {
-            this.isRangeRequest = true;
-            setRange(req);
-        } else {
-            this.isRangeRequest = false;
-        }
         System.out.println("relativeURL: " + "\"" + relativeURL + "\"");
         return relativeURL;
     }
@@ -98,7 +90,8 @@ public class ThreadedHTTPWorker extends Thread {
             String MIMEType = categorizeFile(path);
             File f = new File(path);
             if (f.exists()) {
-                if (this.isRangeRequest) {
+                if (req.contains("Range: ")) {
+                    setRange(req);
                     sendPartialContent(MIMEType, this.rangeNum, f);
                 } else {
                     sendFullContent(MIMEType, f);
@@ -160,15 +153,16 @@ public class ThreadedHTTPWorker extends Thread {
     private void viewContent(String path) {
         UDPClient udpclient = new UDPClient();
 
-        ArrayList<RemoteServerInfo> infos = VodServer.getRemoteServerInfo(path); // TODO: get chunks from multiple
-                                                                                 // remote servers
+        ArrayList<RemoteServerInfo> infos = VodServer.getRemoteServerInfo(path);
         if (infos == null) {
             sendErrorResponse("Please add peer first!");
             return;
         }
         VodServer.setRate(infos.get(0).rate);
-        udpclient.startClient(path, infos, this.outputStream);
-
+        String result = udpclient.startClient(path, infos, this.outputStream);
+        if (!result.equals("Success")) {
+            sendErrorResponse(result);
+        }
     }
 
     private void sendErrorResponse(String msg) {
@@ -184,7 +178,6 @@ public class ThreadedHTTPWorker extends Thread {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
     private void configureRate(HTTPURIParser parser) {
@@ -206,18 +199,12 @@ public class ThreadedHTTPWorker extends Thread {
         } catch (NumberFormatException | IOException e) {
             sendErrorResponse("Invalid rate configure");
         }
-
     }
 
     private void getStatus() {
         try {
-            double completeness = VodServer.getCompleteness();
-            double bitRate = VodServer.getCurrentBitsPerSecond();
-
-            String completenessMsg = Double.toString(completeness) + " %";
-            String bitRateMsg = Double.toString(bitRate) + " bits/s";
-            String html = "<html><body><h1>Current status: </h1><p>File Complenteness: " + completenessMsg
-                    + "<br> Current bit rate: " + bitRateMsg + "</p></body></html>";
+            String html = "<html><body><h1>Current status: </h1><p>File Complenteness: " + VodServer.getCompleteness()
+                    + " %<br>Current bit rate: " + VodServer.getCurrentkbps() + " kbps</p></body></html>";
             String response = "HTTP/1.1 200 OK" + this.CRLF +
                     "Date: " + getGMTDate(new Date()) + this.CRLF +
                     "Content-Type: text/html" + this.CRLF +
@@ -227,10 +214,6 @@ public class ThreadedHTTPWorker extends Thread {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    private boolean isRangeRequest(String req) {
-        return req.contains("Range: ");
     }
 
     // extract range from request
@@ -288,7 +271,6 @@ public class ThreadedHTTPWorker extends Thread {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
     private void sendFullContent(String MIMEType, File f) {
