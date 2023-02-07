@@ -1,42 +1,11 @@
 import java.io.*;
 import java.net.*;
-import java.nio.ByteBuffer;
 import java.util.*;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
 public class UDPClient {
     private final static int bufferSize = 1024;
-    private long requestFileSize;
-    private long requestFileLastModified;
-    private int numChunks;
-    private int windowSize;
-    private String requestFilename;
     private final String CRLF = "\r\n";
-
-    public void setRequestFilename(String filename) {
-        this.requestFilename = filename;
-    }
-
-    public long getRequestFileSize() {
-        return this.requestFileSize;
-    }
-
-    public long getRequestFileLastModified() {
-        return this.requestFileLastModified;
-    }
-
-    public int getNumChunks() {
-        return this.numChunks;
-    }
-
-    private String getDateInfo() {
-        // produce day of the week
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(new Date());
-        DateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy hh:mm:ss");
-        return formatter.format(cal.getTime());
-    }
 
     public static void intToByteArray(int value, byte[] buffer) {
         buffer[0] = (byte) (value >>> 24);
@@ -52,24 +21,25 @@ public class UDPClient {
                 (bytes[3] & 0xff);
     }
 
-    public void startClient(String path, RemoteServerInfo info, DataOutputStream outputStream) {
+    public void startClient(String path, ArrayList<RemoteServerInfo> remoteServers, DataOutputStream outputStream) {
         try (DatagramSocket socket = new DatagramSocket(0)) {
-            this.requestFilename = path;
-
             // send request packet
-            InetAddress host = InetAddress.getByName(info.hostname);
-            byte[] seqNumBytes = new byte[4];
+
             byte[] requestData = new byte[bufferSize];
             byte[] receiveData = new byte[bufferSize];
-            seqNumBytes = ByteBuffer.allocate(4).putInt(0).array();
-            System.arraycopy(seqNumBytes, 0, requestData, 0, 4);
-            byte[] messageBytes = requestFilename.getBytes();
+            intToByteArray(0, requestData);
+            byte[] messageBytes = path.getBytes();
             System.arraycopy(messageBytes, 0, requestData, 4, messageBytes.length);
-            DatagramPacket outPkt = new DatagramPacket(requestData, requestData.length, host, info.port);
-            DatagramPacket inPkt = new DatagramPacket(receiveData, receiveData.length);
-            socket.send(outPkt);
+
+            for (RemoteServerInfo udpserver : remoteServers) {
+                DatagramPacket outPkt = new DatagramPacket(requestData, requestData.length, udpserver.host,
+                        udpserver.port);
+                socket.send(outPkt);
+            }
 
             try {
+                DatagramPacket inPkt = new DatagramPacket(receiveData, receiveData.length);
+
                 // wait for first packet, and then process the packet...
                 socket.setSoTimeout(1000); // wait for response for 1 seconds
                 socket.receive(inPkt);
@@ -79,20 +49,21 @@ public class UDPClient {
                     return;
                 }
                 String[] responseValues = result.split(" ");
-                this.requestFileSize = Long.parseLong(responseValues[0]);
-                this.requestFileLastModified = Long.parseLong(responseValues[1]);
-                this.numChunks = Integer.parseInt(responseValues[2]);
-                this.windowSize = Integer.parseInt(responseValues[3]);
+                Long fileSize = Long.parseLong(responseValues[0]);
+                Long fileLastModified = Long.parseLong(responseValues[1]);
+                Integer numChunks = Integer.parseInt(responseValues[2]);
+                Integer windowSize = Integer.parseInt(responseValues[3]);
                 System.out.println("numChunks: " + numChunks + " windowSize: " + windowSize);
 
-                DateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy hh:mm:ss");
+                SimpleDateFormat formatter = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z");
+                formatter.setTimeZone(TimeZone.getTimeZone("GMT"));
+                Date currentTime = new Date();
                 String MIMEType = URLConnection.getFileNameMap().getContentTypeFor(path);
                 String response = "HTTP/1.1 200 OK" + this.CRLF +
                         "Content-Type: " + MIMEType + this.CRLF +
-                        "Content-Length: " + String.valueOf(requestFileSize) + this.CRLF +
-                        "Date: " + getDateInfo() + " GMT" + this.CRLF +
-                        "Last-Modified: " + formatter.format(requestFileLastModified) + " GMT"
-                        + this.CRLF +
+                        "Content-Length: " + String.valueOf(fileSize) + this.CRLF +
+                        "Date: " + formatter.format(currentTime) + this.CRLF +
+                        "Last-Modified: " + formatter.format(fileLastModified) + this.CRLF +
                         "Connection: close" + this.CRLF +
                         this.CRLF;
                 outputStream.writeBytes(response);
@@ -101,7 +72,7 @@ public class UDPClient {
                 // another condition to start receiving files is numChunks is even smaller
                 // than windowSize
                 int windowStart = 1;
-                int windowEnd = Math.min(windowSize, this.numChunks);
+                int windowEnd = Math.min(windowSize, numChunks);
                 byte[][] buffer = new byte[windowSize][bufferSize];
                 long startTime = System.currentTimeMillis();
                 double bitsSent = 0.0;
@@ -115,7 +86,10 @@ public class UDPClient {
                     for (int i = windowStart; i <= windowEnd; i++) {
                         if (!seen.contains(i)) {
                             intToByteArray(i, requestData);
-                            outPkt = new DatagramPacket(requestData, requestData.length, host, info.port);
+                            RemoteServerInfo udpserver = remoteServers.get(i % remoteServers.size());
+                            DatagramPacket outPkt = new DatagramPacket(requestData, requestData.length,
+                                    remoteServers.get(i % remoteServers.size()).host,
+                                    udpserver.port);
                             socket.send(outPkt);
                         }
                     }
@@ -127,7 +101,8 @@ public class UDPClient {
                             socket.setSoTimeout(100);
                             socket.receive(inPkt);
                             int seqNum = byteArrayToInt(inPkt.getData());
-                            if (seen.contains(seqNum)) {
+                            System.out.println("get No." + seqNum + " packet from: " + inPkt.getPort() + " port");
+                            if (seqNum < 0 || seqNum > numChunks || seen.contains(seqNum)) {
                                 continue;
                             } else {
                                 buffer[seqNum - windowStart] = inPkt.getData();
