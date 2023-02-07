@@ -11,14 +11,15 @@ public class UDPServer extends Thread {
     private int port;
     private static int numChunks;
     private final static int bufferSize = 8192;
-    private static Map<Integer, byte[]> fileChunks = new HashMap<>();
+    private Map<Integer, byte[]> fileChunks;
 
     private final static int MAX_WINDOW_SIZE = 100;
-    private static int windowStart = 1;
-    private static int windowEnd = MAX_WINDOW_SIZE;
+    // private static int windowStart = 1;
+    // private static int windowEnd = MAX_WINDOW_SIZE;
 
     public UDPServer(int port) {
         this.port = port;
+        this.fileChunks = new HashMap<>();
     }
 
     public static void intToByteArray(int value, byte[] buffer) {
@@ -56,7 +57,6 @@ public class UDPServer extends Thread {
         if (seqNum == 0 && !requestString.isEmpty()) {
             // request for a file
             audit.info("Client request for file " + requestString);
-            fileChunks = new HashMap<>();
             String path = requestString;
             File requestFile = new File(path);
             if (!requestFile.exists()) {
@@ -82,7 +82,7 @@ public class UDPServer extends Thread {
             FileInputStream fis = new FileInputStream(requestFile);
             while (fis.read(chunk, 4, bufferSize - 4) > 0) {
                 intToByteArray(chunkIndex, chunk);
-                fileChunks.put(chunkIndex, chunk);
+                this.fileChunks.put(chunkIndex, chunk);
                 chunkIndex++;
                 chunk = new byte[bufferSize];
             }
@@ -99,11 +99,12 @@ public class UDPServer extends Thread {
 
             // check if seqNum is within window
             // release the buffer if the leftmost packet has been received by client
-            if (seqNum > windowEnd) {
-                fileChunks.remove(windowStart);
-            }
-            DatagramPacket outPkt = new DatagramPacket(fileChunks.get(seqNum),
-                    fileChunks.get(seqNum).length,
+            // TODO: fix window remove
+            // if (seqNum > windowEnd) {
+            // this.fileChunks.remove(windowStart);
+            // }
+            DatagramPacket outPkt = new DatagramPacket(this.fileChunks.get(seqNum),
+                    this.fileChunks.get(seqNum).length,
                     inPkt.getAddress(),
                     inPkt.getPort());
             socket.send(outPkt);

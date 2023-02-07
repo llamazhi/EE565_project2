@@ -140,9 +140,13 @@ public class UDPClient {
                     }
 
                     // write chunks into outputStream
-                    for (int i = 0; i <= windowEnd - windowStart; i++) {
-                        outputStream.write(buffer[i], 4, bufferSize - 4);
-                        outputStream.flush(); // flush all the contents into stream
+                    try {
+                        for (int i = 0; i <= windowEnd - windowStart; i++) {
+                            outputStream.write(buffer[i], 4, bufferSize - 4);
+                            outputStream.flush(); // flush all the contents into stream
+                        }
+                    } catch (SocketException ex) {
+                        System.out.println("Cannot write to outputStream. Client has closed the socket.");
                     }
 
                     windowStart = windowEnd + 1;

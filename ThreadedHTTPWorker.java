@@ -73,12 +73,15 @@ public class ThreadedHTTPWorker extends Thread {
     }
 
     private String preprocessReq(String req) {
-        String[] reqComponents = req.split("\r\n");
-        System.out.println("first line: " + reqComponents[0]);
-        String relativeURL = reqComponents[0];
-        relativeURL = relativeURL.replace("GET /", "").replace(" HTTP/1.1", "");
-        System.out.println("relativeURL: " + "\"" + relativeURL + "\"");
-        return relativeURL;
+        int index = req.indexOf("GET");
+        int nextIndex = req.indexOf("HTTP/");
+        if (index != -1 && nextIndex != -1) {
+            String relativeURL = req.substring(index + 4, nextIndex - 1).trim();
+            System.out.println("relativeURL: " + "\"" + relativeURL + "\"");
+            return relativeURL;
+        } else {
+            return "";
+        }
     }
 
     private void parseURI(String req, String relativeURL) {
