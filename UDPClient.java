@@ -4,7 +4,7 @@ import java.util.*;
 import java.text.SimpleDateFormat;
 
 public class UDPClient {
-    private final static int bufferSize = 1024;
+    private final static int bufferSize = 8192;
     private final String CRLF = "\r\n";
 
     public static void intToByteArray(int value, byte[] buffer) {
@@ -21,7 +21,7 @@ public class UDPClient {
                 (bytes[3] & 0xff);
     }
 
-    public void startClient(String path, ArrayList<RemoteServerInfo> remoteServers, DataOutputStream outputStream) {
+    public String startClient(String path, ArrayList<RemoteServerInfo> remoteServers, DataOutputStream outputStream) {
         try (DatagramSocket socket = new DatagramSocket(0)) {
             // send request packet
 
@@ -46,7 +46,7 @@ public class UDPClient {
                 String result = new String(inPkt.getData(), 0, inPkt.getLength(), "US-ASCII").trim();
                 System.out.println("result: " + result);
                 if (result.contains("FileNotExistsError")) {
-                    return;
+                    return "FileNotExistsError";
                 }
                 String[] responseValues = result.split(" ");
                 Long fileSize = Long.parseLong(responseValues[0]);
@@ -148,18 +148,19 @@ public class UDPClient {
                     windowStart = windowEnd + 1;
                     windowEnd = Math.min(windowStart + windowSize - 1, numChunks);
                     VodServer.setCompleteness(100.0 * seen.size() / numChunks);
-                    VodServer.setCurrentBitsPerSecond(currentBitsPerSecond);
+                    VodServer.setCurrentkbps(currentBitsPerSecond / 1000);
                     System.out.printf("%.2f", 100.0 * seen.size() / numChunks);
                     System.out.println(" % complete");
                 }
             } catch (SocketTimeoutException ex) {
                 socket.close();
                 System.err.println("No connection within 1 seconds");
+                return "NoResondFromRemoteServerError";
             }
-        } catch (
-
-        IOException ex) {
+        } catch (IOException ex) {
             ex.printStackTrace();
+            return "SocketCannotOpenError";
         }
+        return "Success";
     }
 }

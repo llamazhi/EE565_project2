@@ -7,7 +7,7 @@ import java.util.HashMap;
 public class VodServer {
     public static HashMap<String, ArrayList<RemoteServerInfo>> parameterMap;
     private static Double completeness = 0.0;
-    private static Double CurrentBitsPerSecond = 0.0;
+    private static Double Currentkbps = 0.0;
     private static Integer bitRate = 0;
 
     public static void addPeer(String filepath, RemoteServerInfo info) {
@@ -17,12 +17,12 @@ public class VodServer {
         VodServer.parameterMap.get(filepath).add(info);
     }
 
-    public static void setCurrentBitsPerSecond(double bps) {
-        VodServer.CurrentBitsPerSecond = bps;
+    public static void setCurrentkbps(double kbps) {
+        VodServer.Currentkbps = kbps;
     }
 
-    public static double getCurrentBitsPerSecond() {
-        return VodServer.CurrentBitsPerSecond;
+    public static double getCurrentkbps() {
+        return VodServer.Currentkbps;
     }
 
     public static void setCompleteness(double completeness) {

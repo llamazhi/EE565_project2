@@ -10,10 +10,10 @@ public class UDPServer extends Thread {
 
     private int port;
     private static int numChunks;
-    private final static int bufferSize = 1024;
+    private final static int bufferSize = 8192;
     private static Map<Integer, byte[]> fileChunks = new HashMap<>();
 
-    private final static int MAX_WINDOW_SIZE = 10;
+    private final static int MAX_WINDOW_SIZE = 100;
     private static int windowStart = 1;
     private static int windowEnd = MAX_WINDOW_SIZE;
 
