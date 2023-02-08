@@ -11,6 +11,7 @@ public class UDPServer extends Thread {
     private int port;
     private static int numChunks;
     private final static int bufferSize = 8192;
+    // TODO: map<filename, map<seqnum, chunks>>
     private Map<Integer, byte[]> fileChunks;
 
     private final static int MAX_WINDOW_SIZE = 100;
@@ -38,6 +39,14 @@ public class UDPServer extends Thread {
 
     // TODO: use thread? channel? handle multiple client?
     // TODO: limit sending rate at server side using the config in add peer
+    // TODO: use the config in peer/add?rate=xxx to limit the sending rate
+    // TODO: client specify the sending rate when sending the request
+
+    // time: 0 timer start
+    // long bitSent;
+    // for every outPkt, bitSent += outPkt.length * 8;
+    // if bitSent > rate: sleep until time = 1
+    // time = 1, bitSent = 0;
     @Override
     public void run() {
         try (DatagramSocket socket = new DatagramSocket(this.port)) {
@@ -59,7 +68,11 @@ public class UDPServer extends Thread {
         if (seqNum == 0 && !requestString.isEmpty()) {
             // request for a file
             audit.info("Client request for file " + requestString);
-            String path = requestString;
+            String[] requestValues = requestString.split(" ");
+            // TODO: requestString will also have sending rate
+            String path = requestValues[0];
+            Integer bitRate = Integer.parseInt(requestValues[1]);
+            // TODO: if reveive new file request, add an entry to the fileChunks map
             File requestFile = new File(path);
             if (!requestFile.exists()) {
                 byte[] data = ("FileNotExistsError").getBytes(Charset.forName("US-ASCII"));
@@ -101,10 +114,8 @@ public class UDPServer extends Thread {
 
             // check if seqNum is within window
             // release the buffer if the leftmost packet has been received by client
-            // TODO: fix window remove
-            // if (seqNum > windowEnd) {
-            // this.fileChunks.remove(windowStart);
-            // }
+            // TODO: map<filename, map<seqnum, chunks>>
+            // TODO: sleep to limit the sending rate
             DatagramPacket outPkt = new DatagramPacket(this.fileChunks.get(seqNum),
                     this.fileChunks.get(seqNum).length,
                     inPkt.getAddress(),

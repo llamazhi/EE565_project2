@@ -28,10 +28,11 @@ public class UDPClient {
             byte[] requestData = new byte[bufferSize];
             byte[] receiveData = new byte[bufferSize];
             intToByteArray(0, requestData);
-            byte[] messageBytes = path.getBytes();
-            System.arraycopy(messageBytes, 0, requestData, 4, messageBytes.length);
 
             for (RemoteServerInfo udpserver : remoteServers) {
+                String message = path + " " + udpserver.rate;
+                byte[] messageBytes = message.getBytes();
+                System.arraycopy(messageBytes, 0, requestData, 4, messageBytes.length);
                 DatagramPacket outPkt = new DatagramPacket(requestData, requestData.length, udpserver.host,
                         udpserver.port);
                 socket.send(outPkt);
@@ -87,8 +88,7 @@ public class UDPClient {
                         if (!seen.contains(i)) {
                             intToByteArray(i, requestData);
                             RemoteServerInfo udpserver = remoteServers.get(i % remoteServers.size());
-                            DatagramPacket outPkt = new DatagramPacket(requestData, requestData.length,
-                                    remoteServers.get(i % remoteServers.size()).host,
+                            DatagramPacket outPkt = new DatagramPacket(requestData, requestData.length, udpserver.host,
                                     udpserver.port);
                             socket.send(outPkt);
                         }
@@ -96,6 +96,7 @@ public class UDPClient {
 
                     // receive packet within the window
                     while (true) {
+                        // TODO: sleep or break the loop when received chunks exceed the byte rate limit
                         try {
                             inPkt = new DatagramPacket(new byte[bufferSize], bufferSize);
                             socket.setSoTimeout(100);
