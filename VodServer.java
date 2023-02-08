@@ -19,6 +19,7 @@ public class VodServer {
             VodServer.parameterMap.put(filepath, new ArrayList<RemoteServerInfo>());
         }
         VodServer.parameterMap.get(filepath).add(info);
+        System.out.println(parameterMap);
     }
 
     public static void setCurrentkbps(double kbps) {

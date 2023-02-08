@@ -90,7 +90,6 @@ public class ThreadedHTTPWorker extends Thread {
         if (!parser.hasUDPRequest()) {
             // This is a local request
             String path = parser.getPath();
-            System.out.println("path: " + path);
             String MIMEType = categorizeFile(path);
             File f = new File(path);
             if (f.exists()) {
@@ -159,6 +158,7 @@ public class ThreadedHTTPWorker extends Thread {
 
         System.out.println(path);
         ArrayList<RemoteServerInfo> infos = VodServer.getRemoteServerInfo(path);
+        System.out.println("infos: " + infos);
         if (infos == null) {
             sendErrorResponse("Please add peer first!");
             return;
