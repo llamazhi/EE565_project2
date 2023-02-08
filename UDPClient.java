@@ -75,9 +75,10 @@ public class UDPClient {
                 int windowStart = 1;
                 int windowEnd = Math.min(windowSize, numChunks);
                 byte[][] buffer = new byte[windowSize][bufferSize];
-                long startTime = System.currentTimeMillis();
-                double bitsSent = 0.0;
-                double sleepTime = 0.0;
+                long oneSecStartTime = System.currentTimeMillis();
+                long tenSecStartTime = System.currentTimeMillis();
+                double bitsReceivedInOneSec = 0.0;
+                double bitsReceivedInTenSec = 0.0;
                 Set<Integer> seen = new HashSet<Integer>();
 
                 while (windowStart <= windowEnd && windowEnd <= numChunks) {
@@ -96,7 +97,6 @@ public class UDPClient {
 
                     // receive packet within the window
                     while (true) {
-                        // TODO: sleep or break the loop when received chunks exceed the byte rate limit
                         try {
                             inPkt = new DatagramPacket(new byte[bufferSize], bufferSize);
                             socket.setSoTimeout(100);
@@ -108,6 +108,31 @@ public class UDPClient {
                             } else {
                                 buffer[seqNum - windowStart] = inPkt.getData();
                                 seen.add(seqNum);
+                                bitsReceivedInOneSec += bufferSize * 8;
+                                bitsReceivedInTenSec += bufferSize * 8;
+
+                                VodServer.setCompleteness(100.0 * seen.size() / numChunks);
+                                if (System.currentTimeMillis() - tenSecStartTime > 10000) {
+                                    VodServer.setCurrentkbps(
+                                            bitsReceivedInTenSec / (System.currentTimeMillis() - tenSecStartTime));
+                                    tenSecStartTime = System.currentTimeMillis();
+                                    bitsReceivedInTenSec = 0;
+                                }
+                                // sleep if bitsReceived exceed bit rate
+                                if (VodServer.getBitRate() != 0
+                                        && bitsReceivedInOneSec >= VodServer.getBitRate() * 1000) {
+                                    double elapsedTime = System.currentTimeMillis() - oneSecStartTime;
+                                    if (elapsedTime < 1000) {
+                                        try {
+                                            System.out.println("sleep for: " + (1000 - elapsedTime) + " ms");
+                                            Thread.sleep((long) (1000 - elapsedTime));
+                                        } catch (InterruptedException e) {
+                                            System.out.println("Thread building issue");
+                                        }
+                                    }
+                                    oneSecStartTime = System.currentTimeMillis();
+                                    bitsReceivedInOneSec = 0;
+                                }
                             }
                         } catch (SocketTimeoutException ex) {
                             break;
@@ -124,23 +149,6 @@ public class UDPClient {
                         continue;
                     }
 
-                    // TODO: limit receiving rate for client
-                    // Rate limiting
-                    bitsSent += bufferSize * 8 * windowSize;
-                    double elapsedTime = (System.currentTimeMillis() - startTime) / 1000.0;
-                    double currentBitsPerSecond = bitsSent / elapsedTime;
-                    if (VodServer.getBitRate() != 0 && currentBitsPerSecond > VodServer.getBitRate()) {
-                        sleepTime = (bitsSent / VodServer.getBitRate() - elapsedTime);
-                        if (sleepTime > 0) {
-                            try {
-                                System.out.println("sleep for: " + sleepTime + " s");
-                                Thread.sleep((long) (sleepTime * 1000));
-                            } catch (InterruptedException e) {
-                                System.out.println("Thread building issue");
-                            }
-                        }
-                    }
-
                     // write chunks into outputStream
                     try {
                         for (int i = 0; i <= windowEnd - windowStart; i++) {
@@ -153,9 +161,6 @@ public class UDPClient {
 
                     windowStart = windowEnd + 1;
                     windowEnd = Math.min(windowStart + windowSize - 1, numChunks);
-                    VodServer.setCompleteness(100.0 * seen.size() / numChunks);
-                    // TODO: calculate average bit rate within 10 seconds
-                    VodServer.setCurrentkbps(currentBitsPerSecond / 1000);
                     System.out.printf("%.2f", 100.0 * seen.size() / numChunks);
                     System.out.println(" % complete");
                 }

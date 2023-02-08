@@ -108,7 +108,7 @@ public class ThreadedHTTPWorker extends Thread {
             addPeer(queries);
         } else if (parser.hasView()) {
             String path = parser.getPath();
-            path = path.replace("peer/view/", "");
+            path = path.replace("/peer/view/", "");
             viewContent(path);
         } else if (parser.hasConfig()) {
             configureRate(parser);
@@ -156,6 +156,7 @@ public class ThreadedHTTPWorker extends Thread {
     private void viewContent(String path) {
         UDPClient udpclient = new UDPClient();
 
+        System.out.println(path);
         ArrayList<RemoteServerInfo> infos = VodServer.getRemoteServerInfo(path);
         if (infos == null) {
             sendErrorResponse("Please add peer first!");
@@ -185,13 +186,9 @@ public class ThreadedHTTPWorker extends Thread {
     private void configureRate(HTTPURIParser parser) {
         try {
             int rate = Integer.parseInt(parser.getQueries()[0].split("=")[1]);
-            for (Map.Entry<String, ArrayList<RemoteServerInfo>> entry : VodServer.parameterMap.entrySet()) {
-                for (int i = 0; i < entry.getValue().size(); i++) {
-                    entry.getValue().get(i).rate = rate * 1000;
-                }
-            }
-
-            String html = "<html><body><h1>Bit rate set to " + rate * 1000 + " bits/s</h1></body></html>";
+            VodServer.setBitRate(rate);
+            String html = "<html><body><h1>Client receiving bit rate set to " + rate
+                    + " kbps</h1></body></html>";
             String response = "HTTP/1.1 200 OK" + this.CRLF +
                     "Date: " + getGMTDate(new Date()) + this.CRLF +
                     "Content-Type: text/html" + this.CRLF +
