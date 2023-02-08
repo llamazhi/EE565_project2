@@ -36,6 +36,8 @@ public class UDPServer extends Thread {
                 (bytes[3] & 0xff);
     }
 
+    // TODO: use thread? channel? handle multiple client?
+    // TODO: limit sending rate at server side using the config in add peer
     @Override
     public void run() {
         try (DatagramSocket socket = new DatagramSocket(this.port)) {

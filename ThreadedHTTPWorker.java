@@ -161,7 +161,6 @@ public class ThreadedHTTPWorker extends Thread {
             sendErrorResponse("Please add peer first!");
             return;
         }
-        VodServer.setRate(infos.get(0).rate);
         String result = udpclient.startClient(path, infos, this.outputStream);
         if (!result.equals("Success")) {
             sendErrorResponse(result);

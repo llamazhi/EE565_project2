@@ -33,10 +33,6 @@ public class VodServer {
         return VodServer.completeness;
     }
 
-    public static void setRate(int bitRate) {
-        VodServer.bitRate = bitRate;
-    }
-
     public static int getBitRate() {
         return VodServer.bitRate;
     }

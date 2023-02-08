@@ -123,6 +123,7 @@ public class UDPClient {
                         continue;
                     }
 
+                    // TODO: limit receiving rate for client
                     // Rate limiting
                     bitsSent += bufferSize * 8 * windowSize;
                     double elapsedTime = (System.currentTimeMillis() - startTime) / 1000.0;
@@ -152,6 +153,7 @@ public class UDPClient {
                     windowStart = windowEnd + 1;
                     windowEnd = Math.min(windowStart + windowSize - 1, numChunks);
                     VodServer.setCompleteness(100.0 * seen.size() / numChunks);
+                    // TODO: calculate average bit rate within 10 seconds
                     VodServer.setCurrentkbps(currentBitsPerSecond / 1000);
                     System.out.printf("%.2f", 100.0 * seen.size() / numChunks);
                     System.out.println(" % complete");
