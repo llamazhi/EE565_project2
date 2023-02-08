@@ -8,6 +8,7 @@ import java.util.Map;
 public class VodServer {
     public static HashMap<String, ArrayList<RemoteServerInfo>> parameterMap;
     public static ArrayList<Long> clientReceiveTimestamps;
+    public static boolean bitRateChanged = false;
     public final static Integer bufferSize = 8192;
     private static Double completeness = 0.0;
     private static Double Currentkbps = 0.0;
@@ -39,6 +40,7 @@ public class VodServer {
     public static void setBitRate(Integer bitRate) {
         VodServer.clientReceiveTimestamps = new ArrayList<>();
         VodServer.bitRate = bitRate; // kbps
+        VodServer.bitRateChanged = true;
     }
 
     public static int getBitRate() {

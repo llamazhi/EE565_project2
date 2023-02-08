@@ -76,7 +76,7 @@ public class UDPClient {
                 int windowEnd = Math.min(windowSize, numChunks);
                 byte[][] buffer = new byte[windowSize][bufferSize];
                 long startTime = System.currentTimeMillis();
-                long bitsReceivedInOneMin = 0;
+                long bitsReceivedInOneSec = 0;
                 Set<Integer> seen = new HashSet<Integer>();
 
                 while (windowStart <= windowEnd && windowEnd <= numChunks) {
@@ -108,22 +108,28 @@ public class UDPClient {
                                 seen.add(seqNum);
                                 VodServer.setCompleteness(100.0 * seen.size() / numChunks);
                                 VodServer.clientReceiveTimestamps.add(System.currentTimeMillis());
-                                bitsReceivedInOneMin += bufferSize * 8;
+                                bitsReceivedInOneSec += bufferSize * 8;
+                                if (VodServer.bitRateChanged) {
+                                    bitsReceivedInOneSec = 0;
+                                    VodServer.bitRateChanged = false;
+                                }
                                 // sleep if bitsReceived exceed bit rate
                                 while (VodServer.getBitRate() != 0
-                                        && bitsReceivedInOneMin >= VodServer.getBitRate() * 1000) {
-                                    double elapsedTime = System.currentTimeMillis() - startTime;
-                                    if (elapsedTime < 1000) {
-                                        try {
-                                            double sleepTime = (1000 - elapsedTime) * 2;
-                                            System.out.println("sleep for: " + sleepTime + " ms");
-                                            Thread.sleep((long) (sleepTime));
-                                        } catch (InterruptedException e) {
-                                            System.out.println("Thread building issue");
-                                        }
+                                        && bitsReceivedInOneSec >= VodServer.getBitRate() * 1000) {
+                                    // double elapsedTime = System.currentTimeMillis() - startTime;
+                                    // if (elapsedTime < 1000) {
+
+                                    try {
+                                        // double sleepTime = (1000 - elapsedTime) * 2;
+                                        double sleepTime = bitsReceivedInOneSec / VodServer.getBitRate();
+                                        System.out.println("sleep for: " + sleepTime + " ms");
+                                        Thread.sleep((long) (sleepTime));
+                                    } catch (InterruptedException e) {
+                                        System.out.println("Thread building issue");
                                     }
+                                    // }
                                     startTime = System.currentTimeMillis();
-                                    bitsReceivedInOneMin = 0;
+                                    bitsReceivedInOneSec = 0;
                                 }
                             }
                         } catch (SocketTimeoutException ex) {
