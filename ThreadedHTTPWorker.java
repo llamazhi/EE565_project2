@@ -10,6 +10,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.Collections;
 
 // ThreadedHTTPWorker class is responsible for all the
 // actual string & data transfer
@@ -200,10 +201,30 @@ public class ThreadedHTTPWorker extends Thread {
         }
     }
 
+    private double getAverageBitRateWithinInterval(long interval) {
+        long currentTime = System.currentTimeMillis();
+        int index = Collections.binarySearch(VodServer.clientReceiveTimestamps, currentTime - interval);
+        long startTime;
+        if (index < 0) {
+            index = -index - 1;
+        }
+        if (index == VodServer.clientReceiveTimestamps.size()) {
+            return 0;
+        } else {
+            startTime = VodServer.clientReceiveTimestamps.get(index);
+            return (VodServer.clientReceiveTimestamps.size() - index) * 8 * VodServer.bufferSize
+                    / (currentTime - startTime);
+        }
+    }
+
     private void getStatus() {
         try {
             String html = "<html><body><h1>Current status: </h1><p>File Complenteness: " + VodServer.getCompleteness()
-                    + " %<br>Current bit rate: " + VodServer.getCurrentkbps() + " kbps</p></body></html>";
+                    + " %"
+                    + "<br>Average bit rate in 1 second: " + getAverageBitRateWithinInterval(1000) + " kbps"
+                    + "<br>Average bit rate in 10 second: " + getAverageBitRateWithinInterval(10000) + " kbps"
+                    + "<br>Average bit rate in 60 second: " + getAverageBitRateWithinInterval(60000) + " kbps"
+                    + "</p></body></html>";
             String response = "HTTP/1.1 200 OK" + this.CRLF +
                     "Date: " + getGMTDate(new Date()) + this.CRLF +
                     "Content-Type: text/html" + this.CRLF +
