@@ -12,17 +12,14 @@ public class UDPServer extends Thread {
     private static int numChunks;
     private final static int bufferSize = 8192;
     private HashMap<SocketAddress, String> clientInfos;
-    private HashMap<String, ArrayList<Long>> chunkSendTimestamps;
     private HashMap<String, Integer> pathToBitRate;
     private HashMap<String, HashMap<Integer, byte[]>> fileChunks;
     private static int bitSent = 0;
-    private static long startTime;
     private final static int MAX_WINDOW_SIZE = 100;
 
     public UDPServer(int port) {
         this.port = port;
         this.fileChunks = new HashMap<>();
-        this.chunkSendTimestamps = new HashMap<>();
         this.clientInfos = new HashMap<>();
         this.pathToBitRate = new HashMap<>();
     }
@@ -67,8 +64,6 @@ public class UDPServer extends Thread {
             String path = requestValues[0];
             audit.info("Client request for file " + path);
             bitRate = Integer.parseInt(requestValues[1]);
-            this.pathToBitRate.put(path, bitRate); // unit in bit/sec
-            UDPServer.startTime = System.currentTimeMillis();
 
             File requestFile = new File(path);
             if (!requestFile.exists()) {
@@ -78,7 +73,7 @@ public class UDPServer extends Thread {
                 return;
             }
 
-            audit.info("Client socket address: " + inPkt.getSocketAddress());
+            this.pathToBitRate.put(path, bitRate); // unit in bit/sec
             this.clientInfos.put(inPkt.getSocketAddress(), path);
 
             long fileSize = requestFile.length();
@@ -115,9 +110,7 @@ public class UDPServer extends Thread {
 
         } else if (seqNum > 0 && seqNum <= numChunks) {
             // request for specific chunk of data
-            audit.info("Client socket address: " + inPkt.getSocketAddress());
             String path = this.clientInfos.get(inPkt.getSocketAddress());
-            audit.info("Client request for: " + path);
             byte[] sendingChunk = this.fileChunks.get(path).get(seqNum);
             DatagramPacket outPkt = new DatagramPacket(
                     sendingChunk,
@@ -125,27 +118,23 @@ public class UDPServer extends Thread {
                     inPkt.getAddress(),
                     inPkt.getPort());
 
-            bitSent += outPkt.getLength() * 8;
-            bitRate = this.pathToBitRate.get(path); // unit in kbps
-            long elapsedTime = System.currentTimeMillis() - UDPServer.startTime;
-
             socket.send(outPkt);
 
-            if (bitRate != 0 && bitSent > bitRate * 1000 && elapsedTime <= 1000) {
+            UDPServer.bitSent += outPkt.getLength() * 8;
+            bitRate = this.pathToBitRate.get(path); // unit in kbps
+            System.out.println(UDPServer.bitSent);
+            System.out.println("bitRate: " + bitRate);
+
+            if (bitRate != 0 && UDPServer.bitSent > bitRate * 1000) {
                 try {
-                    System.out.println("elapsed time: " + elapsedTime);
-                    System.out.println("Need sleep for " + (1000 - elapsedTime) + " ms");
-                    Thread.sleep(1000 - elapsedTime);
-                    bitSent = 0;
-                    UDPServer.startTime = System.currentTimeMillis(); // update startTime
+                    double sleepTime = (UDPServer.bitSent / bitRate) - 1000;
+                    System.out.println("Need sleep for " + sleepTime + " ms");
+                    Thread.sleep((long) sleepTime);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+                UDPServer.bitSent = 0;
             }
-            if (!this.chunkSendTimestamps.containsKey(path)) {
-                this.chunkSendTimestamps.put(path, new ArrayList<>());
-            }
-            this.chunkSendTimestamps.get(path).add(System.currentTimeMillis());
         }
     }
 }

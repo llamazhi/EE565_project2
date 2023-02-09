@@ -75,7 +75,6 @@ public class UDPClient {
                 int windowStart = 1;
                 int windowEnd = Math.min(windowSize, numChunks);
                 byte[][] buffer = new byte[windowSize][bufferSize];
-                long startTime = System.currentTimeMillis();
                 long bitsReceivedInOneSec = 0;
                 Set<Integer> seen = new HashSet<Integer>();
 
@@ -114,21 +113,15 @@ public class UDPClient {
                                     VodServer.bitRateChanged = false;
                                 }
                                 // sleep if bitsReceived exceed bit rate
-                                while (VodServer.getBitRate() != 0
+                                if (VodServer.getBitRate() != 0
                                         && bitsReceivedInOneSec >= VodServer.getBitRate() * 1000) {
-                                    // double elapsedTime = System.currentTimeMillis() - startTime;
-                                    // if (elapsedTime < 1000) {
-
                                     try {
-                                        // double sleepTime = (1000 - elapsedTime) * 2;
                                         double sleepTime = bitsReceivedInOneSec / VodServer.getBitRate();
                                         System.out.println("sleep for: " + sleepTime + " ms");
                                         Thread.sleep((long) (sleepTime));
                                     } catch (InterruptedException e) {
                                         System.out.println("Thread building issue");
                                     }
-                                    // }
-                                    startTime = System.currentTimeMillis();
                                     bitsReceivedInOneSec = 0;
                                 }
                             }
