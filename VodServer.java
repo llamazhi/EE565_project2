@@ -2,10 +2,14 @@ import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 
 // This is the main driver class for the project
 public class VodServer {
     public static HashMap<String, ArrayList<RemoteServerInfo>> parameterMap;
+    public static ArrayList<Long> clientReceiveTimestamps;
+    public static boolean bitRateChanged = false;
+    public final static Integer bufferSize = 8192;
     private static Double completeness = 0.0;
     private static Double Currentkbps = 0.0;
     private static Integer bitRate = 0;
@@ -33,6 +37,12 @@ public class VodServer {
         return VodServer.completeness;
     }
 
+    public static void setBitRate(Integer bitRate) {
+        VodServer.clientReceiveTimestamps = new ArrayList<>();
+        VodServer.bitRate = bitRate; // kbps
+        VodServer.bitRateChanged = true;
+    }
+
     public static int getBitRate() {
         return VodServer.bitRate;
     }
@@ -43,6 +53,7 @@ public class VodServer {
 
     public static void main(String[] args) {
         VodServer.parameterMap = new HashMap<String, ArrayList<RemoteServerInfo>>();
+        VodServer.clientReceiveTimestamps = new ArrayList<>();
         ServerSocket server = null;
         int httpPort;
         int udpPort;

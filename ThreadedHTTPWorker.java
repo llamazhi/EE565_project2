@@ -10,6 +10,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.Collections;
 
 // ThreadedHTTPWorker class is responsible for all the
 // actual string & data transfer
@@ -108,7 +109,7 @@ public class ThreadedHTTPWorker extends Thread {
             addPeer(queries);
         } else if (parser.hasView()) {
             String path = parser.getPath();
-            path = path.replace("peer/view/", "");
+            path = path.replace("/peer/view/", "");
             viewContent(path);
         } else if (parser.hasConfig()) {
             configureRate(parser);
@@ -156,6 +157,7 @@ public class ThreadedHTTPWorker extends Thread {
     private void viewContent(String path) {
         UDPClient udpclient = new UDPClient();
 
+        System.out.println(path);
         ArrayList<RemoteServerInfo> infos = VodServer.getRemoteServerInfo(path);
         if (infos == null) {
             sendErrorResponse("Please add peer first!");
@@ -185,13 +187,9 @@ public class ThreadedHTTPWorker extends Thread {
     private void configureRate(HTTPURIParser parser) {
         try {
             int rate = Integer.parseInt(parser.getQueries()[0].split("=")[1]);
-            for (Map.Entry<String, ArrayList<RemoteServerInfo>> entry : VodServer.parameterMap.entrySet()) {
-                for (int i = 0; i < entry.getValue().size(); i++) {
-                    entry.getValue().get(i).rate = rate * 1000;
-                }
-            }
-
-            String html = "<html><body><h1>Bit rate set to " + rate * 1000 + " bits/s</h1></body></html>";
+            VodServer.setBitRate(rate);
+            String html = "<html><body><h1>Client receiving bit rate set to " + rate
+                    + " kbps</h1></body></html>";
             String response = "HTTP/1.1 200 OK" + this.CRLF +
                     "Date: " + getGMTDate(new Date()) + this.CRLF +
                     "Content-Type: text/html" + this.CRLF +
@@ -203,10 +201,30 @@ public class ThreadedHTTPWorker extends Thread {
         }
     }
 
+    private double getAverageBitRateWithinInterval(long interval) {
+        long currentTime = System.currentTimeMillis();
+        int index = Collections.binarySearch(VodServer.clientReceiveTimestamps, currentTime - interval);
+        long startTime;
+        if (index < 0) {
+            index = -index - 1;
+        }
+        if (index == VodServer.clientReceiveTimestamps.size()) {
+            return 0;
+        } else {
+            startTime = VodServer.clientReceiveTimestamps.get(index);
+            return (VodServer.clientReceiveTimestamps.size() - index) * 8 * VodServer.bufferSize
+                    / (currentTime - startTime);
+        }
+    }
+
     private void getStatus() {
         try {
             String html = "<html><body><h1>Current status: </h1><p>File Complenteness: " + VodServer.getCompleteness()
-                    + " %<br>Current bit rate: " + VodServer.getCurrentkbps() + " kbps</p></body></html>";
+                    + " %"
+                    + "<br>Average bit rate in 1 second: " + getAverageBitRateWithinInterval(1000) + " kbps"
+                    + "<br>Average bit rate in 10 second: " + getAverageBitRateWithinInterval(10000) + " kbps"
+                    + "<br>Average bit rate in 60 second: " + getAverageBitRateWithinInterval(60000) + " kbps"
+                    + "</p></body></html>";
             String response = "HTTP/1.1 200 OK" + this.CRLF +
                     "Date: " + getGMTDate(new Date()) + this.CRLF +
                     "Content-Type: text/html" + this.CRLF +
