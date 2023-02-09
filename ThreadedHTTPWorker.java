@@ -210,8 +210,8 @@ public class ThreadedHTTPWorker extends Thread {
             return 0;
         } else {
             startTime = VodServer.clientReceiveTimestamps.get(index);
-            return (VodServer.clientReceiveTimestamps.size() - index) * 8 * VodServer.bufferSize
-                    / (currentTime - startTime);
+            return ((double) VodServer.clientReceiveTimestamps.size() - index) * 8 * (double) VodServer.bufferSize
+                    / (double) (currentTime - startTime);
         }
     }
 

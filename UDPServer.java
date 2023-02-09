@@ -122,8 +122,6 @@ public class UDPServer extends Thread {
 
             UDPServer.bitSent += outPkt.getLength() * 8;
             bitRate = this.pathToBitRate.get(path); // unit in kbps
-            System.out.println(UDPServer.bitSent);
-            System.out.println("bitRate: " + bitRate);
 
             if (bitRate != 0 && UDPServer.bitSent > bitRate * 1000) {
                 try {
