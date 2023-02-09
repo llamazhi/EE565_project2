@@ -8,7 +8,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.TimeZone;
 import java.util.Collections;
 
@@ -90,7 +89,6 @@ public class ThreadedHTTPWorker extends Thread {
         if (!parser.hasUDPRequest()) {
             // This is a local request
             String path = parser.getPath();
-            System.out.println("path: " + path);
             String MIMEType = categorizeFile(path);
             File f = new File(path);
             if (f.exists()) {
@@ -134,7 +132,7 @@ public class ThreadedHTTPWorker extends Thread {
             String path = keyValue.get("path");
             int port = Integer.parseInt(keyValue.get("port"));
             String host = keyValue.get("host");
-            int rate = Integer.parseInt(keyValue.get("rate")) * 1000;
+            int rate = Integer.parseInt(keyValue.get("rate"));
             RemoteServerInfo info = new RemoteServerInfo(host, port, rate);
             VodServer.addPeer(path, info);
             // Pass the queries to backend port

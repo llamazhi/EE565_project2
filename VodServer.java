@@ -2,7 +2,6 @@ import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 
 // This is the main driver class for the project
 public class VodServer {
@@ -11,7 +10,6 @@ public class VodServer {
     public static boolean bitRateChanged = false;
     public final static Integer bufferSize = 8192;
     private static Double completeness = 0.0;
-    private static Double Currentkbps = 0.0;
     private static Integer bitRate = 0;
 
     public static void addPeer(String filepath, RemoteServerInfo info) {
@@ -19,14 +17,7 @@ public class VodServer {
             VodServer.parameterMap.put(filepath, new ArrayList<RemoteServerInfo>());
         }
         VodServer.parameterMap.get(filepath).add(info);
-    }
-
-    public static void setCurrentkbps(double kbps) {
-        VodServer.Currentkbps = kbps;
-    }
-
-    public static double getCurrentkbps() {
-        return VodServer.Currentkbps;
+        System.out.println(parameterMap);
     }
 
     public static void setCompleteness(double completeness) {
@@ -37,12 +28,14 @@ public class VodServer {
         return VodServer.completeness;
     }
 
+    // client receive rate limit
     public static void setBitRate(Integer bitRate) {
         VodServer.clientReceiveTimestamps = new ArrayList<>();
         VodServer.bitRate = bitRate; // kbps
         VodServer.bitRateChanged = true;
     }
 
+    // client receive rate limit
     public static int getBitRate() {
         return VodServer.bitRate;
     }
